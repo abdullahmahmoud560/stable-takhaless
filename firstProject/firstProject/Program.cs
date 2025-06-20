@@ -1,0 +1,202 @@
+﻿using System.Text;
+using firstProject.ApplicationDbContext;
+using firstProject.Model;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Serilog;
+using Serilog.Debugging;
+using AspNetCoreRateLimit;
+using firstProject.DTO;
+using DotNetEnv;
+
+var builder = WebApplication.CreateBuilder(args);
+Env.Load();
+
+// ✅ تحميل Serilog مرة واحدة فقط
+builder.Host.UseSerilog((context, config) =>
+{
+    config.ReadFrom.Configuration(context.Configuration);
+});
+
+
+SelfLog.Enable(Console.Out);
+
+builder.Services.AddControllers();
+
+// ✅ إضافة Rate Limiting
+builder.Services.Configure<IpRateLimitOptions>(builder.Configuration.GetSection("IpRateLimiting"));
+builder.Services.Configure<IpRateLimitPolicies>(builder.Configuration.GetSection("IpRateLimitPolicies"));
+builder.Services.AddSingleton<IRateLimitCounterStore, MemoryCacheRateLimitCounterStore>();  
+builder.Services.AddSingleton<IIpPolicyStore, MemoryCacheIpPolicyStore>();  
+builder.Services.AddSingleton<IRateLimitConfiguration, RateLimitConfiguration>();
+builder.Services.AddSingleton<IProcessingStrategy, AsyncKeyLockProcessingStrategy>();  
+
+
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+builder.Services.AddScoped<EmailService>();
+
+// ✅ إضافة MySQL
+builder.Services.AddDbContext<DB>(options =>
+{
+    options.UseMySQL(Environment.GetEnvironmentVariable("ConnectionStrings__Connection")!);
+});
+
+// ✅ إضافة Identity
+builder.Services.AddIdentity<User, IdentityRole>(options =>
+{
+    options.Lockout.MaxFailedAccessAttempts = 5;
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+    options.Lockout.AllowedForNewUsers = true;
+    options.Tokens.ProviderMap.Add("Email", new TokenProviderDescriptor(typeof(EmailTokenProvider<User>)));
+    options.Password.RequiredLength = 8;
+})
+.AddEntityFrameworkStores<DB>()
+.AddDefaultTokenProviders();
+
+// ✅ إضافة JWT Authentication
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.RequireHttpsMetadata = false;
+
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+
+        ValidIssuer = Environment.GetEnvironmentVariable("JWT__Issuer"),
+        ValidAudience = Environment.GetEnvironmentVariable("JWT__Audience"),
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Environment.GetEnvironmentVariable("JWT__SecretKey")!)),
+        RoleClaimType = "Role",
+        ClockSkew = TimeSpan.Zero 
+    };
+
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var token = context.Request.Cookies["token"];
+            if (!string.IsNullOrEmpty(token))
+            {
+                context.Token = token;
+            }
+            return Task.CompletedTask;
+        }
+    };
+});
+
+
+// ✅ إضافة Health Checks
+builder.Services.AddHealthChecks();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddHttpClient();
+// ✅ تخصيص الأخطاء في الـ API
+
+builder.Services.AddControllers().ConfigureApiBehaviorOptions(options =>
+{
+    options.InvalidModelStateResponseFactory = context =>
+    {
+        var errors = context.ModelState
+            .Where(m => m.Value!.Errors.Any())
+            .Select(m => new
+            {
+                Field = m.Key,
+                Errors = m.Value!.Errors.Select(e => e.ErrorMessage).ToList()
+            })
+            .ToList();
+
+        return new OkObjectResult(new ApiResponse
+        {
+            Message = "هناك بعض الأخطاء في البيانات المدخلة ",
+        });
+    };
+});
+builder.Services.AddDataProtection();
+
+// ✅ تخصيص وقت صلاحية التوكنات
+builder.Services.Configure<DataProtectionTokenProviderOptions>(options =>
+{
+    options.TokenLifespan = TimeSpan.FromMinutes(1);
+});
+
+// ✅ إعدادات CORS
+var MyCors = "MyCors";
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(name: MyCors,
+        policy =>
+        {
+            policy.WithOrigins("https://test.takhleesak.com")
+                  .AllowCredentials() 
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        });
+});
+builder.Services.AddMemoryCache();
+
+var app = builder.Build();
+
+// ✅ 1️⃣ Health Checks
+app.MapHealthChecks("/health");
+
+
+// ✅ 2️⃣ تفعيل تحديد المعدل (Rate Limiting) قبل أي Middleware يعتمد على الطلبات
+app.UseIpRateLimiting();
+app.UseHttpsRedirection();
+
+// ✅ 3️⃣ تفعيل التوجيه
+app.UseRouting();
+
+// ✅ 4️⃣ تفعيل CORS قبل المصادقة والتفويض
+app.UseCors("MyCors");
+
+// ✅ 5️⃣ تفعيل المصادقة والتفويض
+app.UseAuthentication();
+app.UseAuthorization();
+
+// ✅ 6️⃣ تطبيق Middleware خاص على المسارات المحمية
+var protectedRoutes = new[]
+{
+    "/api/Reset-Password",
+    "/api/VerifyCode",
+    "/api/Blocked-User",
+    "/api/Unblocked-User",
+    "/api/Black-List",
+    "/api/Change-Roles",
+    "/api/Remove-All-Access",
+    "/api/Get-Information",
+    "/api/Get-User",
+    "/api/Get-Broker",
+    "/api/Get-CustomerService",
+    "/api/Get-Account",
+    "/api/Get-All-Peaple-Admin",
+    "/api/Statictis",
+    "/api/Get-Information",
+    "/api/Select-Data",
+};
+
+app.UseWhen(
+    context => protectedRoutes.Any(route => context.Request.Path.StartsWithSegments(route)),
+    appBuilder => appBuilder.UseMiddleware<AuthenticationMiddleware>()
+);
+
+// ✅ 7️⃣ تفعيل Swagger قبل MapControllers
+app.UseSwagger();
+app.UseSwaggerUI();
+
+// ✅ 8️⃣ تفعيل التوجيه النهائي والتحكم في الـ API
+app.MapControllers();
+
+// ✅ 9️⃣ تشغيل التطبيق
+app.Run();

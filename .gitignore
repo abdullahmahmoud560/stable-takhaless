@@ -1,0 +1,7 @@
+bin/
+obj/
+publish/
+*.http
+*.sln
+*.user
+*.vs

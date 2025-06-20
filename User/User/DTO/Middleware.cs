@@ -1,0 +1,51 @@
+﻿using System.Net.Http.Headers;
+using System.Net.Http;
+using System.Text.Json;
+using Microsoft.AspNetCore.Http;
+using Serilog.Context;
+using System.Net;
+
+namespace User.DTO
+{
+    public class Middleware
+    {
+        private readonly RequestDelegate _next;
+        private readonly HttpClient _httpClient;
+
+        public Middleware(RequestDelegate next, HttpClient httpClient)
+        {
+            _next = next;
+            _httpClient = httpClient;
+        }
+
+        public async Task Invoke(HttpContext context)
+        {
+            // خذ التوكن من الكوكيز بدل الهيدر
+            string token = context.Request.Cookies["token"]!;
+
+            if (string.IsNullOrEmpty(token))
+            {
+                context.Response.StatusCode = (int)HttpStatusCode.Unauthorized;
+                await context.Response.WriteAsJsonAsync(new ApiResponse
+                {
+                    Message = "لم يتم العثور على التوكن"
+                });
+                return;
+            }
+
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            HttpResponseMessage response = await _httpClient.GetAsync("https://takhleesak.runasp.net/api/Checker");
+            string responseBody = await response.Content.ReadAsStringAsync();
+
+            using JsonDocument doc = JsonDocument.Parse(responseBody);
+            string message = doc.RootElement.GetProperty("message").GetString() ?? "رسالة غير متوفرة";
+
+            var responseApi = new ApiResponse
+            {
+                Message = message,
+            };
+
+            await context.Response.WriteAsJsonAsync(responseApi);
+        }
+    }
+}

@@ -1,0 +1,227 @@
+services:
+  # ========================================
+  # MySQL Databases
+  # ========================================
+  
+  # Admin Database
+  admin-db:
+    image: mysql:8.0
+    container_name: admin-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root_admin_pass
+      MYSQL_DATABASE: u676203545_logs
+      MYSQL_USER: admin_user
+      MYSQL_PASSWORD: admin_pass
+    volumes:
+      - admin_db_data:/var/lib/mysql
+      - ./mysql-init:/docker-entrypoint-initdb.d
+    ports:
+      - "3307:3306"
+    networks:
+      - takhlees-network
+
+  # CustomerService Database
+  customerservice-db:
+    image: mysql:8.0
+    container_name: customerservice-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root_customerservice_pass
+      MYSQL_DATABASE: u676203545_CustomerServic
+      MYSQL_USER: customerservice_user
+      MYSQL_PASSWORD: customerservice_pass
+    volumes:
+      - customerservice_db_data:/var/lib/mysql
+    ports:
+      - "3308:3306"
+    networks:
+      - takhlees-network
+
+  # FirstProject Database
+  firstproject-db:
+    image: mysql:8.0
+    container_name: firstproject-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root_firstproject_pass
+      MYSQL_DATABASE: u676203545_mainData
+      MYSQL_USER: firstproject_user
+      MYSQL_PASSWORD: firstproject_pass
+    volumes:
+      - firstproject_db_data:/var/lib/mysql
+    ports:
+      - "3309:3306"
+    networks:
+      - takhlees-network
+
+  # User Database
+  user-db:
+    image: mysql:8.0
+    container_name: user-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root_user_pass
+      MYSQL_DATABASE: u676203545_Orders
+      MYSQL_USER: user_user
+      MYSQL_PASSWORD: user_pass
+    volumes:
+      - user_db_data:/var/lib/mysql
+    ports:
+      - "3310:3306"
+    networks:
+      - takhlees-network
+
+  # HangFire Database
+  hangfire-db:
+    image: mysql:8.0
+    container_name: hangfire-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root_hangfire_pass
+      MYSQL_DATABASE: u676203545_HangFire
+      MYSQL_USER: hangfire_user
+      MYSQL_PASSWORD: hangfire_pass
+    volumes:
+      - hangfire_db_data:/var/lib/mysql
+    ports:
+      - "3311:3306"
+    networks:
+      - takhlees-network
+
+  # ========================================
+  # phpMyAdmin
+  # ========================================
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: phpmyadmin
+    restart: unless-stopped
+    environment:
+      PMA_ARBITRARY: 1
+      PMA_HOSTS: admin-db,customerservice-db,firstproject-db,user-db,hangfire-db
+      MYSQL_ROOT_PASSWORD: admin_root_pass
+    ports:
+      - "8080:80"
+    depends_on:
+      - admin-db
+      - customerservice-db
+      - firstproject-db
+      - user-db
+      - hangfire-db
+    networks:
+      - takhlees-network
+
+  # ========================================
+  # Application Services
+  # ========================================
+
+  # Admin Service
+  admin-service:
+    build:
+      context: .
+      dockerfile: Admin/Dockerfile
+    container_name: admin-service
+    restart: unless-stopped
+    env_file:
+      - Admin/environment.env
+    ports:
+      - "5001:80"
+    depends_on:
+      - admin-db
+    volumes:
+      - admin_logs:/app/logs
+    networks:
+      - takhlees-network
+
+  # CustomerService
+  customerservice-service:
+    build:
+      context: .
+      dockerfile: CustomerService/Dockerfile
+    container_name: customerservice-service
+    restart: unless-stopped
+    env_file:
+      - CustomerService/environment.env
+    ports:
+      - "5002:80"
+    depends_on:
+      - customerservice-db
+    volumes:
+      - customerservice_uploads:/app/uploads
+    networks:
+      - takhlees-network
+
+  # FirstProject Service (Main Auth Service)
+  firstproject-service:
+    build:
+      context: .
+      dockerfile: firstProject/Dockerfile
+    container_name: firstproject-service
+    restart: unless-stopped
+    env_file:
+      - firstProject/environment.env
+    environment:
+      - PORT=9100
+    ports:
+      - "9100:9100"
+    depends_on:
+      - firstproject-db
+    networks:
+      - takhlees-network
+
+  # User Service
+  user-service:
+    build:
+      context: .
+      dockerfile: User/Dockerfile
+    container_name: user-service
+    restart: unless-stopped
+    env_file:
+      - User/environment.env
+    ports:
+      - "5003:80"
+    depends_on:
+      - user-db
+      - hangfire-db
+    networks:
+      - takhlees-network
+
+  # ========================================
+  # Reverse Proxy (Nginx)
+  # ========================================
+  nginx:
+    image: nginx:alpine
+    container_name: nginx-proxy
+    restart: unless-stopped
+    ports:
+      - "8090:80"
+      - "8444:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - admin-service
+      - customerservice-service
+      - firstproject-service
+      - user-service
+    networks:
+      - takhlees-network
+
+# ========================================
+# Volumes
+# ========================================
+volumes:
+  admin_db_data:
+  customerservice_db_data:
+  firstproject_db_data:
+  user_db_data:
+  hangfire_db_data:
+  admin_logs:
+  customerservice_uploads:
+
+# ========================================
+# Networks
+# ========================================
+networks:
+  takhlees-network:
+    driver: bridge 

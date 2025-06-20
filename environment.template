@@ -1,0 +1,70 @@
+# ==================================================
+# Takhlees Tech Backend - Environment Configuration Template
+# ==================================================
+# Copy this file to each service's environment.env and update values
+
+# --------------------------------------------------
+# Application Configuration
+# --------------------------------------------------
+ASPNETCORE_ENVIRONMENT=Development  # Change to Production for live deployment
+ASPNETCORE_URLS=http://+:80
+
+# --------------------------------------------------
+# JWT Authentication (CRITICAL - Update for Production)
+# --------------------------------------------------
+JWT__Issuer=https://firstproject.takhleesak.com
+JWT__Audience=https://firstproject.takhleesak.com
+JWT__SecretKey=YOUR_SUPER_SECRET_JWT_KEY_HERE_MINIMUM_256_BITS
+
+# --------------------------------------------------
+# Database Configuration (Update passwords!)
+# --------------------------------------------------
+ConnectionStrings__DefaultConnection=Server=localhost;Database=your_database;User=your_user;Password=your_password;SslMode=Preferred;
+ConnectionStrings__Connection=Server=localhost;Database=your_database;User=your_user;Password=your_password;
+
+# --------------------------------------------------
+# CORS Configuration
+# --------------------------------------------------
+CORS__AllowedOrigins=https://firstproject.takhleesak.com,https://admin.takhleesak.com,https://api.takhleesak.com
+CORS__AllowCredentials=true
+
+# --------------------------------------------------
+# Email Configuration (Update with your SMTP settings)
+# --------------------------------------------------
+EmailConfiguration__From=your-email@takhleesak.com
+EmailConfiguration__SmtpServer=smtp.your-provider.com
+EmailConfiguration__Port=587
+EmailConfiguration__Username=your-email@takhleesak.com
+EmailConfiguration__Password=your-email-password
+EmailConfiguration__UseSSL=true
+
+# --------------------------------------------------
+# PayPal Configuration (User Service only)
+# --------------------------------------------------
+PayPal__ClientId=YOUR_PAYPAL_CLIENT_ID
+PayPal__Secret=YOUR_PAYPAL_SECRET
+PayPal__IsSandbox=true  # Set to false for production
+
+# --------------------------------------------------
+# Rate Limiting Configuration
+# --------------------------------------------------
+IpRateLimiting__EnableEndpointRateLimiting=true
+IpRateLimiting__StackBlockedRequests=false
+IpRateLimiting__HttpStatusCode=429
+IpRateLimiting__GeneralRules__Period=1m
+IpRateLimiting__GeneralRules__Limit=100
+
+# --------------------------------------------------
+# Logging Configuration
+# --------------------------------------------------
+Logging__LogLevel__Default=Information
+Logging__LogLevel__Microsoft=Warning
+Logging__LogLevel__System=Warning
+
+# --------------------------------------------------
+# Service URLs (for inter-service communication)
+# --------------------------------------------------
+FirstProjectService__BaseUrl=http://firstproject-service:9100
+AdminService__BaseUrl=http://admin-service:80
+CustomerService__BaseUrl=http://customerservice-service:80
+UserService__BaseUrl=http://user-service:80 
