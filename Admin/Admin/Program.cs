@@ -5,25 +5,16 @@ using DotNetEnv;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Serilog;
-using Serilog.Debugging;
+
 
 var builder = WebApplication.CreateBuilder(args);
 Env.Load();
-
-builder.Host.UseSerilog((context, config) =>
-{
-    config.ReadFrom.Configuration(context.Configuration)
-          .Enrich.FromLogContext()
-          .Enrich.WithMachineName(); // لإضافة معلومات الجهاز إلى السجلات
-});
 
 builder.Services.AddDbContext<DB>(options =>
 {
     options.UseMySQL(Environment.GetEnvironmentVariable("ConnectionStrings__Connection")!);
 });
 
-SelfLog.Enable(Console.Out);
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -72,7 +63,7 @@ builder.Services.AddHttpClient();
 builder.Services.AddScoped<Functions>();
 builder.Services.AddHttpContextAccessor();
 
-var MyCors = "MyCors";  
+var MyCors = "MyCors";
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(name: MyCors,
@@ -85,9 +76,6 @@ builder.Services.AddCors(options =>
         });
 });
 var app = builder.Build();
-
-// ✅ 1. تسجيل الطلبات في اللوج
-app.UseSerilogRequestLogging();
 
 // ✅ 2. تفعيل Swagger (عادةً يستخدم في التطوير أو لو حابب تعرض واجهة الـ API)
 app.UseSwagger();

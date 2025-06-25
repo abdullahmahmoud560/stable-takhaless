@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+﻿using System;
+using Microsoft.EntityFrameworkCore.Migrations;
 using MySql.EntityFrameworkCore.Metadata;
 
 #nullable disable
@@ -6,7 +7,7 @@ using MySql.EntityFrameworkCore.Metadata;
 namespace Admin.Migrations
 {
     /// <inheritdoc />
-    public partial class addTablelogs : Migration
+    public partial class addLogsTable : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -20,11 +21,11 @@ namespace Admin.Migrations
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("MySQL:ValueGenerationStrategy", MySQLValueGenerationStrategy.IdentityColumn),
-                    Message = table.Column<string>(type: "longtext", nullable: true),
-                    Level = table.Column<string>(type: "longtext", nullable: true),
-                    TimeStamp = table.Column<string>(type: "longtext", nullable: true),
-                    Exception = table.Column<string>(type: "longtext", nullable: true),
-                    Properties = table.Column<string>(type: "longtext", nullable: true)
+                    Message = table.Column<string>(type: "longtext", nullable: false),
+                    NewOrderId = table.Column<int>(type: "int", nullable: false),
+                    TimeStamp = table.Column<DateTime>(type: "datetime(6)", nullable: true),
+                    UserId = table.Column<string>(type: "longtext", nullable: false),
+                    Notes = table.Column<string>(type: "longtext", nullable: false)
                 },
                 constraints: table =>
                 {
