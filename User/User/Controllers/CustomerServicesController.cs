@@ -15,13 +15,10 @@ namespace User.Controllers
     {
         private readonly DB _db;
         private readonly Functions _functions;
-        private readonly ILogger<CustomerServicesController> _logger;
-
-        public CustomerServicesController(DB db, Functions functions , ILogger<CustomerServicesController> logger)
+        public CustomerServicesController(DB db, Functions functions )
         {
             _db = db;
             _functions = functions;
-            _logger = logger;
         }
 
         [Authorize(Roles = "CustomerService,Admin,Manager")]
@@ -73,9 +70,8 @@ namespace User.Controllers
                 }
                 return Ok(new string[] {});
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
 
@@ -122,9 +118,8 @@ namespace User.Controllers
                 }
                 return Ok(new string[] { });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
@@ -142,7 +137,14 @@ namespace User.Controllers
                     order!.statuOrder = "تم التنفيذ";
                     order.AcceptCustomerService = ID;
                     await _db.SaveChangesAsync();
-                    _logger.LogInformation("تم تحويل الطلب الي المحاسب | UserId: {UserId} | OrderId: {newOrderId}", ID, getID.ID);
+                    var Logs = new LogsDTO
+                    {
+                        UserId = ID,
+                        NewOrderId = getID.ID,
+                        Message = "تم تحويل الطلب الي المحاسب",
+                        Notes = string.Empty,
+                    };
+                    await _functions.Logs(Logs);
                     return Ok("تم تغيير الحالة بنجاح");
                 }
                 else if (getID.ID != 0 && getID.BrokerID == null && getID.statuOrder == "false")
@@ -152,15 +154,27 @@ namespace User.Controllers
                     order.Notes = getID.Notes;
                     order.AcceptCustomerService = ID;
                     await _db.SaveChangesAsync();
-                    _logger.LogInformation("تم تحويل الطلب الي المخلص مرة أخرى | UserId: {UserId} | OrderId: {newOrderId}", ID, getID.ID);
-                    _logger.LogInformation("تم إضافة ملاحظات من قبل خدمة العملاء | Notes: {Notes} | OrderId: {OrderId} | UserId: {UserId}",order.Notes, getID.ID, ID);
+                    var Logs = new LogsDTO
+                    {
+                        UserId = ID,
+                        NewOrderId = getID.ID,
+                        Message = "تم تحويل الطلب الي المخلص مرة أخرى",
+                        Notes = getID.Notes,
+                    };
+                    await _functions.Logs(Logs);
+                    var Log = new LogsDTO
+                    {
+                        UserId = ID,
+                        NewOrderId = getID.ID,
+                        Message = "تم إضافة ملاحظات من قبل خدمة العملاء",
+                        Notes = order.Notes,
+                    };
                     return Ok("تم تغيير الحالة بنجاح");
                 }
                 return BadRequest();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
@@ -223,9 +237,8 @@ namespace User.Controllers
                 }
                 return Ok(new string[] {});
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
@@ -243,8 +256,15 @@ namespace User.Controllers
                     order!.statuOrder = "محولة";
                     order.Notes = getID.Notes;
                     order.AcceptCustomerService = ID;
-                    _logger.LogInformation("تم تحويل الطلب الي المخلص مرة أخرى | UserId: {UserId} | OrderId: {newOrderId}", ID, getID.ID);
+                    var Logs = new LogsDTO
+                    {
+                        UserId = ID,
+                        NewOrderId = getID.ID,
+                        Message = "تم تحويل الطلب الي المخلص مرة أخرى",
+                        Notes = string.Empty,
+                    };
                     await _db.SaveChangesAsync();
+                    await _functions.Logs(Logs);
                     return Ok();
                 }
                 else if (getID.ID != 0 && getID.BrokerID == null && getID.statuOrder == "delete")
@@ -253,8 +273,15 @@ namespace User.Controllers
                     order!.statuOrder = "محذوفة";
                     order.Notes = getID.Notes;
                     order.AcceptCustomerService = ID;
-                    _logger.LogInformation("تم تحويل الطلب الي الطلبات المحذوفة | UserId: {UserId} | OrderId: {newOrderId}", ID, getID.ID);
                     await _db.SaveChangesAsync();
+                    var Logs = new LogsDTO
+                    {
+                        UserId = ID,
+                        NewOrderId = getID.ID,
+                        Message = "تم تحويل الطلب الي الطلبات المحذوفة",
+                        Notes = string.Empty,
+                    };
+                    await _functions.Logs(Logs);
                     return Ok();
                 }
                 else if (getID.ID != 0 && getID.BrokerID != null && getID.statuOrder == "send")
@@ -264,15 +291,21 @@ namespace User.Controllers
                     _db.values.RemoveRange(delete);
                     order!.statuOrder = "قيد الإنتظار";
                     order.AcceptCustomerService = ID;
-                    _logger.LogInformation("تم تحويل الطلب الي الطلبات المتاحة | UserId: {UserId} | OrderId: {newOrderId}", ID, getID.ID);
                     await _db.SaveChangesAsync();
+                    var Logs = new LogsDTO
+                    {
+                        UserId = ID,
+                        NewOrderId = getID.ID,
+                        Message = "تم تحويل الطلب الي الطلبات المتاحة",
+                        Notes = string.Empty,
+                    };
+                    await _functions.Logs(Logs);
                     return Ok();
                 }
                 return BadRequest();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
@@ -332,17 +365,21 @@ namespace User.Controllers
                     var result = await _db.SaveChangesAsync();
                     if (result > 0)
                     {
-
-                        _logger.LogInformation("تم إضافة ملاحظات| Notes: {Notes} | OrderId: {newOrderId} | UserId: {UserId}",
-                            notesFromCustomerServiceDTO.Notes, notesFromCustomerServiceDTO.newOrderId, ID);
+                        var Logs = new LogsDTO
+                        {
+                            UserId = ID,
+                            NewOrderId = notesFromCustomerServiceDTO.newOrderId!.Value,
+                            Message = "تم إضافة ملاحظات",
+                            Notes = notesFromCustomerServiceDTO.Notes,
+                        };
+                        await _functions.Logs(Logs);
                         return Ok(new ApiResponse { Message = "تم تقديم الملاحظات بنجاح" });
                     }
                 }
                 return BadRequest("يرجى إدخال ملاحظات أو إرفاق ملف.");
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
@@ -411,9 +448,8 @@ namespace User.Controllers
                 }
                 return Ok(new string[] { });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
@@ -441,9 +477,8 @@ namespace User.Controllers
                     NumberOfDeletedOrders = NumberOfDeletedOrders
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
        }

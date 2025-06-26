@@ -17,15 +17,13 @@ namespace User.Controllers
     public class BrokerController : ControllerBase
     {
         private readonly DB _db;
-        private readonly ILogger<BrokerController> _logger;
         private readonly Functions _functions;
         private readonly HangFire _hangfire;
         private readonly IDataProtector _protector;
 
-        public BrokerController(DB db,ILogger<BrokerController> logger, Functions functions, HangFire hangfire ,IDataProtectionProvider provider)
+        public BrokerController(DB db, Functions functions, HangFire hangfire ,IDataProtectionProvider provider)
         {
             _db = db;
-            _logger = logger;
             _functions = functions;
             _hangfire = hangfire;
             _protector = provider.CreateProtector("OrderIdProtector");
@@ -62,9 +60,8 @@ namespace User.Controllers
 
                 return Ok(filteredOrders);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
@@ -141,9 +138,8 @@ namespace User.Controllers
 
                 return Ok(details);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
@@ -187,7 +183,14 @@ namespace User.Controllers
                             Count = Count,
                             Value = getValue.Value,
                         };
-                        _logger.LogInformation("تم تقديم عرض جديد | UserId: {UserId} | OrderId: {newOrderId}", ID, getValue.newOrderId);
+                        var Logs = new LogsDTO
+                        {
+                            UserId = ID,
+                            NewOrderId = getValue.newOrderId,
+                            Message = "تم تقديم عرض جديد",
+                            Notes = string.Empty,
+                        };
+                        await _functions.Logs(Logs);
                         var Jop = await _db.values.Where(l => l.newOrderId == getValue.newOrderId && l.BrokerID == ID).FirstOrDefaultAsync();
                         if (Jop != null && Jop.JopID == null)
                         {
@@ -206,9 +209,8 @@ namespace User.Controllers
                 }
                 return BadRequest(new ApiResponse { Message = "لم يتم تقديم العرض حاول مرة أخري" });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
@@ -246,10 +248,9 @@ namespace User.Controllers
 
                 return Ok(values);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
-                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " + ex.Message });
+                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق "});
             }
         }
 
@@ -350,9 +351,8 @@ namespace User.Controllers
                 }
                 return Ok(new string[] { });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
 
@@ -476,9 +476,8 @@ namespace User.Controllers
                 }
                 return Ok(new string[] { });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
@@ -500,7 +499,14 @@ namespace User.Controllers
                         BackgroundJob.Delete(order.JopID);
                         BackgroundJob.Delete(values!.JopID);
                         await _db.SaveChangesAsync();
-                        _logger.LogInformation("تم تنفيذ الطلب من قبل المخلص | UserId: {UserId} | OrderId: {newOrderId}", ID, getID.ID);
+                        var Logs = new LogsDTO
+                        {
+                            UserId = ID,
+                            NewOrderId = getID.ID,
+                            Message = "تم تنفيذ الطلب من قبل المخلص",
+                            Notes = string.Empty,
+                        };
+                        await _functions.Logs(Logs);
                         return Ok();
                     }
                     return BadRequest(new ApiResponse { Message = "استكمل مراحل الطلب في الطلبات الجاريةٍ" });
@@ -510,14 +516,20 @@ namespace User.Controllers
                     var order = await _db.newOrders.FirstOrDefaultAsync(l => l.Id == getID.ID);
                     order!.statuOrder = "ملغى";
                     await _db.SaveChangesAsync();
-                    _logger.LogInformation("تم إلغاء الطلب من قبل المخلص | UserId: {UserId} | OrderId: {newOrderId}", ID, getID.ID);
+                    var Logs = new LogsDTO
+                    {
+                        UserId = ID,
+                        NewOrderId = getID.ID,
+                        Message = "تم إلغاء الطلب من قبل المخلص",
+                        Notes = string.Empty,
+                    };
+                    await _functions.Logs(Logs);
                     return Ok();
                 }
                 return BadRequest(new ApiResponse { Message = "هنا خطأ في البيانات المدخلة" });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
@@ -630,48 +642,46 @@ namespace User.Controllers
                 }
                 return Ok(new string[] { });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
 
 
-        [Authorize(Roles = "Broker,User,Admin,Manager,Company")]
-        [HttpPost("DownloadFiles")]
-        public async Task<IActionResult> downloadFiles(DownloadFiles downloadFile)
-        {
-            try
-            {
-                var file = await _db.uploadFiles.Where(l => l.newOrderId == downloadFile.newOrderId).ToListAsync();
-                if (file.Any())
-                {
-                    var updatedFiles = file
-                        .Select((f, index) => new
-                        {
-                            id = index,
-                            fileName = f.fileName,
-                            fileData = f.fileData,
-                            newOrder = f.newOrder,
-                            ContentType = f.ContentType,
-                            newOrderId = f.newOrderId
-                        }).ToList();
+        //[Authorize(Roles = "Broker,User,Admin,Manager,Company")]
+        //[HttpPost("DownloadFiles")]
+        //public async Task<IActionResult> downloadFiles(DownloadFiles downloadFile)
+        //{
+        //    try
+        //    {
+        //        var file = await _db.uploadFiles.Where(l => l.newOrderId == downloadFile.newOrderId).ToListAsync();
+        //        if (file.Any())
+        //        {
+        //            var updatedFiles = file
+        //                .Select((f, index) => new
+        //                {
+        //                    id = index,
+        //                    fileName = f.fileName,
+        //                    fileData = f.fileUrl,
+        //                    newOrder = f.newOrder,
+        //                    ContentType = f.ContentType,
+        //                    newOrderId = f.newOrderId
+        //                }).ToList();
 
-                    if (updatedFiles != null && updatedFiles.Count > downloadFile.Id!.Value)
-                    {
-                        Response.Headers.Add("Content-Disposition", $"attachment; filename*=UTF-8''{Uri.EscapeDataString(updatedFiles[downloadFile.Id!.Value].fileName)}");
-                        return File(updatedFiles[downloadFile.Id!.Value].fileData!, updatedFiles[downloadFile.Id!.Value].ContentType!, updatedFiles[downloadFile.Id!.Value].fileName);
-                    }
-                }
-                return BadRequest(new ApiResponse { Message = "خطأ في البيانات المدخلة" });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
-                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
-            }
-        }
+        //            if (updatedFiles != null && updatedFiles.Count > downloadFile.Id!.Value)
+        //            {
+        //                Response.Headers.Add("Content-Disposition", $"attachment; filename*=UTF-8''{Uri.EscapeDataString(updatedFiles[downloadFile.Id!.Value].fileName)}");
+        //                return File(updatedFiles[downloadFile.Id!.Value].fileData!, updatedFiles[downloadFile.Id!.Value].ContentType!, updatedFiles[downloadFile.Id!.Value].fileName);
+        //            }
+        //        }
+        //        return BadRequest(new ApiResponse { Message = "خطأ في البيانات المدخلة" });
+        //    }
+        //    catch (Exception)
+        //    {
+        //        return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
+        //    }
+        //}
 
         //السجل للمخلص
         [Authorize(Roles = "Broker,User,Company")]
@@ -756,9 +766,8 @@ namespace User.Controllers
                 }
                 return Ok();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
@@ -827,9 +836,8 @@ namespace User.Controllers
                     TotalWaitRequests = sumWaitOrder,
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
@@ -884,9 +892,8 @@ namespace User.Controllers
                     customerServiceOrders = customerServiceOrders
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
@@ -908,9 +915,8 @@ namespace User.Controllers
                 }
                 return BadRequest(new ApiResponse { Message = "لم يتم العثور على الطلب" });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
@@ -932,10 +938,9 @@ namespace User.Controllers
                 }
                 return BadRequest(new ApiResponse { Message = "لم يتم العثور على الطلب" });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
-                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق "+ex.Message });
+                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق "});
             }
         }
 

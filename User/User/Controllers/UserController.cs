@@ -1,12 +1,13 @@
-﻿using System.Globalization;
-using System.Security.Claims;
-using System.Text.Json;
+﻿using DotNetEnv;
 using Hangfire;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
+using System.Security.Claims;
+using System.Text.Json;
 using User.ApplicationDbContext;
 using User.DTO;
 using User.Model;
@@ -19,17 +20,18 @@ namespace User.Controllers
     {
         private readonly DB _db;
         private readonly IHubContext<ChatHub> _hubContext;
-        private readonly ILogger<UserController> _logger;
         private readonly Functions _functions;
         private readonly HangFire _hangFire;
+        private readonly IWebHostEnvironment _env;
 
-        public UserController(DB db, IHubContext<ChatHub> hubContext,ILogger<UserController> logger, Functions functions, HangFire hangFire)
+        public UserController(DB db, IHubContext<ChatHub> hubContext, Functions functions, HangFire hangFire, IWebHostEnvironment env)
         {
             _db = db;
             _hubContext = hubContext;
-            _logger = logger;
             _functions = functions;
             _hangFire = hangFire;
+            _env = env;
+
         }
 
         [Authorize(Roles = "User,Company")]
@@ -39,29 +41,23 @@ namespace User.Controllers
             if (newOrderDTO == null)
                 return BadRequest(new ApiResponse { Message = "بيانات الطلب غير صحيحة" });
 
-            // استرداد ID المستخدم من Claims
             var userId = HttpContext.User.Claims.FirstOrDefault(c => c.Type == "ID")?.Value;
             if (string.IsNullOrEmpty(userId))
                 return Unauthorized(new ApiResponse { Message = "يجب تسجيل الدخول" });
 
-            // التحقق من صحة البيانات الإلزامية
             if (string.IsNullOrWhiteSpace(newOrderDTO.Location) || string.IsNullOrWhiteSpace(newOrderDTO.numberOfLicense))
                 return BadRequest(new ApiResponse { Message = "يجب إدخال جميع البيانات المطلوبة" });
 
             if (!newOrderDTO.numberOfTypeOrders!.Any())
                 return BadRequest(new ApiResponse { Message = "يجب إدخال نوع الطلب على الأقل" });
 
-            // تعريف الامتدادات والمime types المسموحة
             var allowedExtensions = new[] { ".jpg", ".png", ".pdf", ".jpeg" };
             var allowedMimeTypes = new[] { "image/jpeg", "image/png", "application/pdf" };
-
-            // كائن للتحقق من نوع MIME
             var provider = new FileExtensionContentTypeProvider();
 
-            // التحقق من صحة الملفات المرفقة
             if (newOrderDTO.uploadFile != null && newOrderDTO.uploadFile.Any())
             {
-                if (newOrderDTO.uploadFile.Count <1)
+                if (newOrderDTO.uploadFile.Count < 1)
                     return BadRequest(new ApiResponse { Message = "يُسمح بإرسال بملف 1 علي الأقل" });
 
                 foreach (var file in newOrderDTO.uploadFile)
@@ -79,7 +75,6 @@ namespace User.Controllers
             {
                 try
                 {
-                    // إنشاء طلب جديد
                     var newOrder = new NewOrder
                     {
                         Location = newOrderDTO.Location,
@@ -96,7 +91,6 @@ namespace User.Controllers
                     _db.newOrders.Add(newOrder);
                     await _db.SaveChangesAsync();
 
-                    // إضافة أنواع الطلبات
                     var typeOrders = newOrderDTO.numberOfTypeOrders!.Select(t => new NumberOfTypeOrder
                     {
                         typeOrder = t.typeOrder,
@@ -108,26 +102,30 @@ namespace User.Controllers
 
                     _db.typeOrders.AddRange(typeOrders);
 
-                    // تحميل الملفات المرفقة
                     if (newOrderDTO.uploadFile != null && newOrderDTO.uploadFile.Any())
                     {
                         var uploadFiles = new List<UploadFile>();
+                        var uploadsFolder = Path.Combine(_env.WebRootPath, "uploads");
+                        Directory.CreateDirectory(uploadsFolder);
+
                         foreach (var file in newOrderDTO.uploadFile)
                         {
-                            using var memoryStream = new MemoryStream();
-                            await file.CopyToAsync(memoryStream);
+                            var fileExtension = Path.GetExtension(file.FileName).ToLower();
+                            var uniqueFileName = $"{Guid.NewGuid()}{fileExtension}";
+                            var filePath = Path.Combine(uploadsFolder, uniqueFileName);
 
-                            if (!provider.TryGetContentType(file.FileName, out string? mimeType))
-                                mimeType = "application/octet-stream"; // نوع افتراضي
+                            using (var stream = new FileStream(filePath, FileMode.Create))
+                            {
+                                await file.CopyToAsync(stream);
+                            }
 
-                            // قراءة بيانات الملف كـ byte[]
-                            var fileBytes = memoryStream.ToArray();
+                            var url = $"{Request.Scheme}://{Request.Host}/uploads/{uniqueFileName}";
 
                             uploadFiles.Add(new UploadFile
                             {
                                 fileName = file.FileName,
-                                fileData = fileBytes, // تخزين بيانات الملف
-                                ContentType = mimeType,
+                                fileUrl = url,
+                                ContentType = file.ContentType,
                                 newOrderId = newOrder.Id,
                             });
                         }
@@ -138,7 +136,6 @@ namespace User.Controllers
                     await _db.SaveChangesAsync();
                     await transaction.CommitAsync();
 
-                    // إرسال رسالة نجاح للمستخدم عبر SignalR
                     List<GetOrdersDTO> getOrders = new List<GetOrdersDTO>();
                     CultureInfo culture = new CultureInfo("ar-SA")
                     {
@@ -149,12 +146,20 @@ namespace User.Controllers
                     {
                         Location = newOrder.Location,
                         Id = newOrder.Id.ToString(),
-                       Date = newOrder.Date.Value.ToString("dddd, dd MMMM yyyy", culture),
+                        Date = newOrder.Date.Value.ToString("dddd, dd MMMM yyyy", culture),
                     });
 
                     await _hubContext.Clients.All.SendAsync("ReceiveNotification", getOrders[0]);
 
-                    _logger.LogInformation("تم اضافة طلب جديد | UserId: {UserId} | OrderId: {newOrderId}", userId, newOrder.Id);                    
+                    var Logs = new LogsDTO
+                    {
+                        UserId = userId,
+                        NewOrderId = newOrder.Id,
+                        Notes = string.Empty,
+                        Message = "تم اضافة طلب جديد"
+                    };
+                    await _functions.Logs(Logs);
+
                     var expire = newOrder.Date.Value.AddDays(7);
                     var Response = await _functions.SendAPI(userId!);
                     if (Response.HasValue && Response.Value.TryGetProperty("email", out JsonElement Email))
@@ -167,16 +172,15 @@ namespace User.Controllers
                             await _db.SaveChangesAsync();
                         }
                     }
+
                     return Ok(new ApiResponse { Message = "تم تقديم الطلب بنجاح" });
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
-                    _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
-                    return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق "+ex.Message });
+                    return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
                 }
             }
         }
-
         [Authorize(Roles = "User,Company")]
         [HttpPost("Cancel-Order")]
         public async Task<IActionResult> cancelOrder([FromBody]GetID getID)
@@ -195,9 +199,8 @@ namespace User.Controllers
                 }
                 return BadRequest();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
@@ -228,7 +231,14 @@ namespace User.Controllers
                         order!.Accept = getID.BrokerID;
                         await _db.SaveChangesAsync();
                         await transaction.CommitAsync();
-                        _logger.LogInformation("تم قبول العرض من قبل العميل | UserId: {UserId} | OrderId: {newOrderId}", ID, order.Id);
+                        var Logs = new LogsDTO
+                        {
+                            UserId = ID,
+                            NewOrderId = order.Id,
+                            Notes = string.Empty,
+                            Message = "تم قبول العرض من قبل العميل"
+                        };
+                        await _functions.Logs(Logs);
                         var Response = await _functions.SendAPI(value.BrokerID!);
 
                         if (Response.HasValue && Response.Value.TryGetProperty("email", out JsonElement Email))
@@ -238,9 +248,8 @@ namespace User.Controllers
                         return Ok(new ApiResponse { Message = "تم تحديث حالة الطلب بنجاح" });
 
                     }
-                    catch (Exception ex)
+                    catch (Exception)
                     {
-                        _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                         return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
                     }
                 }
@@ -285,9 +294,8 @@ namespace User.Controllers
                 }
                 return Ok(orders);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
@@ -322,9 +330,8 @@ namespace User.Controllers
                 }
                 return Ok(getOrdersDTOs);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
@@ -359,9 +366,8 @@ namespace User.Controllers
                 }
                 return Ok(getOrdersDTOs);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
@@ -427,9 +433,8 @@ namespace User.Controllers
 
                 return Ok(result);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
@@ -465,9 +470,8 @@ namespace User.Controllers
                     counts.NumberOfSuccessfulOrders
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }

@@ -1,6 +1,6 @@
-﻿namespace Admin.DTO
+﻿namespace User.DTO
 {
-    public class AddLogs
+    public class LogsDTO
     {
         public string? Message { get; set; }
         public int? NewOrderId { get; set; }

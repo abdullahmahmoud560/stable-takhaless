@@ -9,7 +9,7 @@ namespace User.Model
         [Required]
         public string? fileName { get; set; }
         [Required]
-        public Byte[]? fileData { get; set; }
+        public string? fileUrl { get; set; }
         [Required]
         public string? ContentType { get; set; }
         public NewOrder? newOrder { get; set; }

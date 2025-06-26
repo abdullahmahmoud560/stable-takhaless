@@ -1,29 +1,19 @@
-﻿using System.Text;
+﻿using DotNetEnv;
 using Hangfire;
 using Hangfire.Dashboard;
 using Hangfire.MySql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using System.Text;
 using User.ApplicationDbContext;
 using User.DTO;
 using User.Service;
-using DotNetEnv;
-using Serilog;
-using Serilog.Debugging;
 
 
 var builder = WebApplication.CreateBuilder(args);
 
 Env.Load();
-
-// ✅ تحميل Serilog
-builder.Host.UseSerilog((context, config) =>
-{
-    config.ReadFrom.Configuration(context.Configuration);
-});
-
-SelfLog.Enable(Console.Out);
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -118,7 +108,7 @@ builder.Services.AddSignalR();
 builder.Services.AddHealthChecks();
 
 var app = builder.Build();
-
+app.UseStaticFiles(); 
 // ✅ تفعيل Swagger
 app.UseSwagger();
 app.UseSwaggerUI();

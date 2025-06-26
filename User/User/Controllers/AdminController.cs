@@ -13,14 +13,12 @@ namespace User.Controllers
     {
         private readonly DB _db;
         private readonly Functions _functions;
-        private readonly ILogger<AccountController> _logger;
         private readonly HangFire _emailService;
 
-        public AdminController(DB db, Functions functions, ILogger<AccountController> logger, HangFire emailService)
+        public AdminController(DB db, Functions functions, HangFire emailService)
         {
             _db = db;
             _functions = functions;
-            _logger = logger;
             _emailService = emailService;
         }
 
@@ -39,10 +37,9 @@ namespace User.Controllers
                     .SumAsync(v => (double?)v.Value) ?? 0.0;
                 return Ok(new { CountAllUsers = Response, CountActiveOrders = CountActiveOrders, CountDoneOrders = CountDoneOrders, Exports = Exports });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
-                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق" + ex.Message });
+                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق"});
             }
         }
 
@@ -78,9 +75,8 @@ namespace User.Controllers
                 }
                 return Ok(new string[] { });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
@@ -122,9 +118,8 @@ namespace User.Controllers
                 }
                 return Ok(ordersList);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
@@ -148,9 +143,8 @@ namespace User.Controllers
                 }
                 return BadRequest();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
@@ -181,9 +175,8 @@ namespace User.Controllers
                 }
                 return Ok(ordersList);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
 
@@ -203,9 +196,8 @@ namespace User.Controllers
                 }
                 return BadRequest(new ApiResponse { Message = "الرجاء ادخال بيانات صحيحة" });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق" });
             }
         }

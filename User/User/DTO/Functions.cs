@@ -1,7 +1,10 @@
-﻿using System.Net;
+﻿using Google.Protobuf.WellKnownTypes;
+using Org.BouncyCastle.Utilities;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using User.Model;
 
 namespace User.DTO
 {
@@ -29,7 +32,7 @@ namespace User.DTO
 
                 var requestData = new { ID = ID };
                 var jsonContent = new StringContent(JsonSerializer.Serialize(requestData), Encoding.UTF8, "application/json");
-
+                Console.WriteLine(_apiUrl + "Select-Data");
                 using var request = new HttpRequestMessage(HttpMethod.Post, _apiUrl + "Select-Data")
                 {
                     Content = jsonContent
@@ -167,6 +170,51 @@ namespace User.DTO
             }
         }
 
+        public async Task<JsonElement?> Logs(LogsDTO logsDTO)
+        {
+            try
+            {
+                string? token = _httpContextAccessor.HttpContext?.Request.Cookies["token"];
+
+                if (string.IsNullOrEmpty(token))
+                {
+                    return JsonDocument.Parse("{\"success\": false, \"message\": \"Missing Authorization Token\"}").RootElement;
+                }
+
+                var requestData = new {
+                    message = logsDTO.Message,
+                    newOrderId =logsDTO.NewOrderId,
+                    userId = logsDTO.UserId,
+                    notes = logsDTO.Notes
+                };
+                var jsonContent = new StringContent(JsonSerializer.Serialize(requestData), Encoding.UTF8, "application/json");
+                Console.WriteLine(_apiUrl + "Select-Data");
+                using var request = new HttpRequestMessage(HttpMethod.Post, "https://admin.takhleesak.com/api/Add-Logs")
+                {
+                    Content = jsonContent
+                };
+
+                // ✅ إرسال التوكن في الهيدر كـ Authorization Bearer (لو الـ API بيحتاجه في الهيدر)
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+                // ولو السيرفر بيتوقعه في الكوكي:
+                // request.Headers.Add("Cookie", $"token={token}");
+
+                var response = await _httpClient.SendAsync(request);
+                response.EnsureSuccessStatusCode();
+
+                string responseString = await response.Content.ReadAsStringAsync();
+                return JsonDocument.Parse(responseString).RootElement;
+            }
+            catch (HttpRequestException httpEx)
+            {
+                return JsonDocument.Parse($"{{\"success\": false, \"message\": \"HTTP Request Error: {httpEx.Message}\"}}").RootElement;
+            }
+            catch (Exception ex)
+            {
+                return JsonDocument.Parse($"{{\"success\": false, \"message\": \"{ex.Message}\"}}").RootElement;
+            }
+        }
 
     }
 }

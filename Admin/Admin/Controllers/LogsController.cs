@@ -93,7 +93,8 @@ namespace Admin.Controllers
                     Message = addLogs.Message!,
                     NewOrderId = addLogs.NewOrderId ?? 0,
                     UserId = addLogs.UserId!,
-                    Notes = addLogs.Notes!
+                    Notes = addLogs.Notes!,
+                    TimeStamp = DateTime.UtcNow
                 };
                 _db.Logs.Add(log);
                 await _db.SaveChangesAsync();
