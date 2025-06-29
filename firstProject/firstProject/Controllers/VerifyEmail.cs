@@ -14,17 +14,17 @@ namespace firstProject.Controllers
     public class VerifyEmail : ControllerBase
     {
         private readonly UserManager<User> _userManager;
-        private readonly ILogger<VerifyEmail> _logger;
-        private readonly IConfiguration _config;
         private readonly EmailService _emailService;
         private readonly DB _context;
-        public VerifyEmail(UserManager<User> userManager, ILogger<VerifyEmail> logger, IConfiguration config , EmailService emailService , DB dbContext)
+        private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly HttpClient _httpClient;
+        public VerifyEmail(UserManager<User> userManager, EmailService emailService , DB dbContext , IHttpContextAccessor httpContext, HttpClient httpClient)
         {
             _userManager = userManager;
-            _logger = logger;
-            _config = config;
             _emailService = emailService;
             _context = dbContext;
+            _httpContextAccessor = httpContext;
+            _httpClient = httpClient;
         }
 
         //تاكيد كود التحقق
@@ -42,7 +42,7 @@ namespace firstProject.Controllers
 
                 if (isCodeValid && isCodeExpired && user!.isBlocked == false)
                 {
-                    var tokenService = new Token(_config, _userManager, _logger);
+                    var tokenService = new Token(_userManager);
                     var Role = await _userManager.GetRolesAsync(user);
                     var rolesString = string.Join(", ", Role);
                     if (verifyCode.typeOfGenerate == "VerifyUserEmail" || verifyCode.typeOfGenerate == "VerifyCompanyEmail" || verifyCode.typeOfGenerate == "VerifyBrokerEmail")
@@ -92,9 +92,8 @@ namespace firstProject.Controllers
 
                 return BadRequest(new ApiResponse { Message = "فشل" , Data =isCodeValid});
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق" });
             }
         }
@@ -108,7 +107,7 @@ namespace firstProject.Controllers
                 var ID = User.FindFirstValue("ID");
                 var user = await _userManager.FindByIdAsync(ID!);
                 var name = await _context.twoFactorVerify.Where(l => l.UserId == ID).Select(g=>g.Name).FirstOrDefaultAsync();
-                var verifyCode = await new Functions(_userManager,_context).GenerateVerifyCode(user!,name!)!;
+                var verifyCode = await new Functions(_userManager, _context, _httpContextAccessor, _httpClient).GenerateVerifyCode(user!,name!)!;
                 var Body = string.Format(@"
 <!DOCTYPE html>
 <html lang=""ar"" dir=""rtl"">
@@ -141,9 +140,8 @@ namespace firstProject.Controllers
                 await _emailService.SendEmailAsync(user!.Email!, "طلب رمز التحقق مرة أخري", Body);
                 return Ok(new ApiResponse { Message = "تم ارسال الكود بنجاح"});
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق" });
             }
         }

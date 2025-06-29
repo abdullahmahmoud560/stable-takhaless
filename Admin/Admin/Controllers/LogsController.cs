@@ -39,7 +39,7 @@ namespace Admin.Controllers
 
                 if (!logs.Any())
                 {
-                    return NotFound(new { message = "لا توجد سجلات مطابقة" });
+                    return Ok(new string[] { });
                 }
 
                 var logsDTO = new List<LogsDTO>();
@@ -93,8 +93,8 @@ namespace Admin.Controllers
                     Message = addLogs.Message!,
                     NewOrderId = addLogs.NewOrderId ?? 0,
                     UserId = addLogs.UserId!,
-                    Notes = addLogs.Notes!,
-                    TimeStamp = DateTime.UtcNow
+                    TimeStamp = addLogs.TimeStamp ?? DateTime.Now,
+                    Notes = addLogs.Notes!
                 };
                 _db.Logs.Add(log);
                 await _db.SaveChangesAsync();

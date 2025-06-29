@@ -12,7 +12,7 @@ public class EmailService
             // إنشاء الرسالة
             var message = new MimeMessage();
             message.From.Add(new MailboxAddress("تخليص تك", Environment.GetEnvironmentVariable("EmailConfiguration__From")));
-            message.ReplyTo.Add(new MailboxAddress("دعم تخليص تك", "support@takhleesak.com"));
+            message.ReplyTo.Add(new MailboxAddress("دعم تخليص تك", "support@gamil.com"));
             message.To.Add(new MailboxAddress("", toEmail));
             message.Subject = subject;
 
@@ -26,27 +26,14 @@ public class EmailService
 
             using (var client = new SmtpClient())
             {
-                // ⭐ إضافة إعدادات Timeout
-                client.Timeout = 30000; // 30 ثانية
-
                 string smtpServer = Environment.GetEnvironmentVariable("EmailConfiguration__SmtpServer")!;
                 int smtpPort = int.TryParse(Environment.GetEnvironmentVariable("EmailConfiguration__Port"), out int port) ? port : 587;
                 string username = Environment.GetEnvironmentVariable("EmailConfiguration__Username")!;
                 string password = Environment.GetEnvironmentVariable("EmailConfiguration__Password")!;
                 bool useSsl = bool.TryParse(Environment.GetEnvironmentVariable("EmailConfiguration__UseSSL"), out bool ssl) && ssl;
 
-                // الاتصال بالخادم مع إعدادات محسنة
-                if (useSsl && smtpPort == 465)
-                {
-                    // استخدام SSL مباشرة للمنفذ 465
-                    await client.ConnectAsync(smtpServer, smtpPort, SecureSocketOptions.SslOnConnect);
-                }
-                else
-                {
-                    // استخدام STARTTLS للمنافذ الأخرى
-                    await client.ConnectAsync(smtpServer, smtpPort, SecureSocketOptions.StartTlsWhenAvailable);
-                }
-
+                // الاتصال بالخادم
+                await client.ConnectAsync(smtpServer, smtpPort, useSsl ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.StartTls);
                 await client.AuthenticateAsync(username, password);
 
                 // إرسال البريد
@@ -55,14 +42,6 @@ public class EmailService
             }
 
             return "✅ تم إرسال البريد الإلكتروني بنجاح.";
-        }
-        catch (TimeoutException)
-        {
-            return "❌ خطأ أثناء إرسال البريد: انتهت مهلة الاتصال. يرجى المحاولة مرة أخرى.";
-        }
-        catch (AuthenticationException)
-        {
-            return "❌ خطأ أثناء إرسال البريد: فشل في المصادقة. يرجى التحقق من بيانات SMTP.";
         }
         catch (Exception ex)
         {

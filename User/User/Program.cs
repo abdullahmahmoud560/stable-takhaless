@@ -57,14 +57,17 @@ builder.Services.AddAuthentication(options =>
     {
         OnMessageReceived = context =>
         {
-            var token = context.Request.Cookies["token"];
-            if (!string.IsNullOrEmpty(token))
+            // ✅ فقط من الكوكيز
+            var tokenFromCookie = context.Request.Cookies["token"];
+            if (!string.IsNullOrEmpty(tokenFromCookie))
             {
-                context.Token = token;
+                context.Token = tokenFromCookie;
             }
+
             return Task.CompletedTask;
         }
     };
+
 });
 
 builder.Services.AddHttpClient();
@@ -108,7 +111,7 @@ builder.Services.AddSignalR();
 builder.Services.AddHealthChecks();
 
 var app = builder.Build();
-app.UseStaticFiles(); 
+
 // ✅ تفعيل Swagger
 app.UseSwagger();
 app.UseSwaggerUI();

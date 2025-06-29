@@ -41,14 +41,14 @@ namespace User.Controllers
             if (newOrderDTO == null)
                 return BadRequest(new ApiResponse { Message = "بيانات الطلب غير صحيحة" });
 
-            var userId = HttpContext.User.Claims.FirstOrDefault(c => c.Type == "ID")?.Value;
+            var userId = User.FindFirstValue("ID");
             if (string.IsNullOrEmpty(userId))
                 return Unauthorized(new ApiResponse { Message = "يجب تسجيل الدخول" });
 
             if (string.IsNullOrWhiteSpace(newOrderDTO.Location) || string.IsNullOrWhiteSpace(newOrderDTO.numberOfLicense))
                 return BadRequest(new ApiResponse { Message = "يجب إدخال جميع البيانات المطلوبة" });
 
-            if (!newOrderDTO.numberOfTypeOrders!.Any())
+            if (newOrderDTO.numberOfTypeOrders?.Any() != true)
                 return BadRequest(new ApiResponse { Message = "يجب إدخال نوع الطلب على الأقل" });
 
             var allowedExtensions = new[] { ".jpg", ".png", ".pdf", ".jpeg" };
@@ -158,7 +158,7 @@ namespace User.Controllers
                         Notes = string.Empty,
                         Message = "تم اضافة طلب جديد"
                     };
-                    await _functions.Logs(Logs);
+                    return Ok (await _functions.Logs(Logs));
 
                     var expire = newOrder.Date.Value.AddDays(7);
                     var Response = await _functions.SendAPI(userId!);
@@ -183,7 +183,7 @@ namespace User.Controllers
         }
         [Authorize(Roles = "User,Company")]
         [HttpPost("Cancel-Order")]
-        public async Task<IActionResult> cancelOrder([FromBody]GetID getID)
+        public async Task<IActionResult> cancelOrder([FromBody] GetID getID)
         {
             try
             {
@@ -207,9 +207,9 @@ namespace User.Controllers
 
         [Authorize(Roles = "User,Company")]
         [HttpPost("Change-Satue")]
-        public async Task<IActionResult> changeStatu([FromBody]GetID getID)
+        public async Task<IActionResult> changeStatu([FromBody] GetID getID)
         {
-            if (getID.ID != 0 && getID.BrokerID != null && getID.statuOrder == null && getID.Value !=null)
+            if (getID.ID != 0 && getID.BrokerID != null && getID.statuOrder == null && getID.Value != null)
             {
                 using (var transaction = await _db.Database.BeginTransactionAsync())
                 {
@@ -224,7 +224,7 @@ namespace User.Controllers
                         var value = await _db.values.Where(l => l.BrokerID == getID.BrokerID && l.Value == getID.Value).FirstOrDefaultAsync();
                         if (value == null)
                         {
-                            return NotFound(new ApiResponse { Message ="لم يتم العثور على القيمة المطلوبة" });
+                            return NotFound(new ApiResponse { Message = "لم يتم العثور على القيمة المطلوبة" });
                         }
                         value.Accept = true;
                         order!.statuOrder = "تحت الإجراء";
@@ -243,7 +243,7 @@ namespace User.Controllers
 
                         if (Response.HasValue && Response.Value.TryGetProperty("email", out JsonElement Email))
                         {
-                            await _hangFire.sendEmilToBroker(Email.ToString(), order.Id,order.Date!.Value);
+                            await _hangFire.sendEmilToBroker(Email.ToString(), order.Id, order.Date!.Value);
                         }
                         return Ok(new ApiResponse { Message = "تم تحديث حالة الطلب بنجاح" });
 
@@ -254,14 +254,14 @@ namespace User.Controllers
                     }
                 }
             }
-            return BadRequest(new ApiResponse { Message = "برجاء ملئ الحقول المطلوبة"});
+            return BadRequest(new ApiResponse { Message = "برجاء ملئ الحقول المطلوبة" });
         }
 
         [Authorize(Roles = "User ,Company")]
         [HttpGet("Get-Accept-Orders-Users")]
         public async Task<IActionResult> getAcceptOrderUsers()
         {
-            
+
             try
             {
                 var ID = User.FindFirstValue("ID");
@@ -314,7 +314,7 @@ namespace User.Controllers
                 var Allorders = _db.newOrders.Where(l => l.UserId == ID && l.statuOrder == "قيد الإنتظار").ToList();
                 if (!Allorders.Any())
                 {
-                    return Ok(new string[] {});
+                    return Ok(new string[] { });
                 }
                 List<GetOrdersDTO> getOrdersDTOs = new List<GetOrdersDTO>();
                 foreach (var order in Allorders)
@@ -335,34 +335,34 @@ namespace User.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
-        
+
         [Authorize(Roles = "Admin,Manager")]
         [HttpGet("Get-Orders-Admin")]
         public async Task<IActionResult> getOrdersAdmin()
         {
             try
             {
-                var Allorders = _db.newOrders.Where(l=>l.statuOrder == "قيد الإنتظار").ToList();
+                var Allorders = _db.newOrders.Where(l => l.statuOrder == "قيد الإنتظار").ToList();
                 if (!Allorders.Any())
                 {
-                    return Ok(new string[] {});
+                    return Ok(new string[] { });
                 }
                 List<GetOrdersDTO> getOrdersDTOs = new List<GetOrdersDTO>();
                 foreach (var order in Allorders)
                 {
                     var typeOrder = await _db.typeOrders.FirstOrDefaultAsync(l => l.newOrderId == order.Id);
-                    var Response =await _functions.SendAPI(order.UserId!);
-                    if(Response.Value.TryGetProperty("fullName",out JsonElement fullName)
+                    var Response = await _functions.SendAPI(order.UserId!);
+                    if (Response.Value.TryGetProperty("fullName", out JsonElement fullName)
                         && Response.Value.TryGetProperty("email", out JsonElement Email))
-                    getOrdersDTOs.Add(new GetOrdersDTO
-                    {
-                        statuOrder = "في إنتظار المخلص لتقديم العروض",
-                        Location = order.Location,
-                        Id = order.Id.ToString(),
-                        typeOrder = typeOrder!.typeOrder,
-                        fullName = fullName.ToString(),
-                        Email = Email.ToString()
-                    });
+                        getOrdersDTOs.Add(new GetOrdersDTO
+                        {
+                            statuOrder = "في إنتظار المخلص لتقديم العروض",
+                            Location = order.Location,
+                            Id = order.Id.ToString(),
+                            typeOrder = typeOrder!.typeOrder,
+                            fullName = fullName.ToString(),
+                            Email = Email.ToString()
+                        });
                 }
                 return Ok(getOrdersDTOs);
             }
@@ -396,7 +396,8 @@ namespace User.Controllers
                 else if (Role == "Broker")
                 {
                     ordersQuery = ordersQuery.Where(l => l.Accept == ID);
-                };
+                }
+                ;
 
                 var orders = await ordersQuery.ToListAsync();
 

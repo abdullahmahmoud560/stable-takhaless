@@ -1,10 +1,10 @@
-﻿using System.Text;
-using Admin.ApplicationDbContext;
+﻿using Admin.ApplicationDbContext;
 using Admin.DTO;
 using DotNetEnv;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -63,7 +63,7 @@ builder.Services.AddHttpClient();
 builder.Services.AddScoped<Functions>();
 builder.Services.AddHttpContextAccessor();
 
-var MyCors = "MyCors";
+var MyCors = "MyCors";  
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(name: MyCors,

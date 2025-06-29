@@ -202,11 +202,11 @@ namespace User.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
-                    b.Property<string>("fileName")
+                    b.Property<byte[]>("fileData")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("longblob");
 
-                    b.Property<string>("fileUrl")
+                    b.Property<string>("fileName")
                         .IsRequired()
                         .HasColumnType("longtext");
 

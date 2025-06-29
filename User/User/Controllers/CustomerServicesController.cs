@@ -15,7 +15,7 @@ namespace User.Controllers
     {
         private readonly DB _db;
         private readonly Functions _functions;
-        public CustomerServicesController(DB db, Functions functions )
+        public CustomerServicesController(DB db, Functions functions)
         {
             _db = db;
             _functions = functions;
@@ -38,7 +38,7 @@ namespace User.Controllers
                 List<GetOrdersDTO> ordersDTOs = new List<GetOrdersDTO>();
                 if (acceptedOrders.Any())
                 {
-                    foreach(var accept in acceptedOrders)
+                    foreach (var accept in acceptedOrders)
                     {
                         var typeOrder = await _db.typeOrders
                             .Where(l => l.newOrderId == accept.Id)
@@ -68,7 +68,7 @@ namespace User.Controllers
                     }
                     return Ok(ordersDTOs);
                 }
-                return Ok(new string[] {});
+                return Ok(new string[] { });
             }
             catch (Exception)
             {
@@ -201,7 +201,7 @@ namespace User.Controllers
                         var typeOrder = await _db.typeOrders
                             .Where(l => l.newOrderId == order.Id)
                             .FirstOrDefaultAsync();
-                        
+
 
                         var Response = await _functions.BrokerandUser(order.Accept!, order.AcceptAccount!);
                         if (Response.Value.TryGetProperty("user", out JsonElement User) &&
@@ -235,7 +235,7 @@ namespace User.Controllers
                     }
                     return Ok(ordersDTOs);
                 }
-                return Ok(new string[] {});
+                return Ok(new string[] { });
             }
             catch (Exception)
             {
@@ -244,7 +244,7 @@ namespace User.Controllers
         }
 
         [Authorize(Roles = "CustomerService,Admin")]
-         [HttpPost("Change-Statu-CustomerService-Broker")]
+        [HttpPost("Change-Statu-CustomerService-Broker")]
         public async Task<IActionResult> chageStatueCustomerServiceBroker(GetID getID)
         {
             try
@@ -481,6 +481,6 @@ namespace User.Controllers
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
-       }
+        }
     }
 }

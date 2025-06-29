@@ -21,7 +21,7 @@ namespace User.Controllers
         private readonly HangFire _hangfire;
         private readonly IDataProtector _protector;
 
-        public BrokerController(DB db, Functions functions, HangFire hangfire ,IDataProtectionProvider provider)
+        public BrokerController(DB db, Functions functions, HangFire hangfire, IDataProtectionProvider provider)
         {
             _db = db;
             _functions = functions;
@@ -76,7 +76,7 @@ namespace User.Controllers
             {
                 int NewOrderId = int.Parse(_protector.Unprotect(OrderId));
 
-                if (NewOrderId ==0)
+                if (NewOrderId == 0)
                 {
                     return BadRequest(new ApiResponse { Message = "لم يتم العثور على معرف الطلب أو أنه غير صالح" });
                 }
@@ -200,7 +200,7 @@ namespace User.Controllers
                                 var Date = _db.newOrders.FirstOrDefault(l => l.Id == getValue.newOrderId);
                                 var difference = (Date!.Date!.Value.AddDays(7) - DateTime.Now).TotalDays;
                                 var JopID = BackgroundJob.Schedule(() => _hangfire.sendEmail(Email.ToString(), getValue.newOrderId!.Value, DateTime.Now.AddDays(difference)), DateTime.Now.AddDays(difference - 1));
-                                Jop.JopID = JopID; 
+                                Jop.JopID = JopID;
                                 await _db.SaveChangesAsync();
                             }
                         }
@@ -250,7 +250,7 @@ namespace User.Controllers
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق "});
+                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
 
@@ -410,7 +410,7 @@ namespace User.Controllers
                         return Ok(ordersDTOs);
                     }
                 }
-                else if (Role == "User"  || Role == "Company")
+                else if (Role == "User" || Role == "Company")
                 {
                     var result = await _db.newOrders.Where(l => l.UserId == ID && l.statuOrder == "تحت الإجراء" && l.Accept != null).ToListAsync();
                     if (result.Any())
@@ -853,7 +853,7 @@ namespace User.Controllers
                 {
                     return BadRequest(new ApiResponse { Message = "لم يتم العثور على معرف المستخدم في بيانات الاعتماد" });
                 }
-                var NumberOfAllOrders = await _db.newOrders.Where(l => l.statuOrder == "قيد الإنتظار" && l.Date!.Value.AddDays(7) > DateTime.Now ).CountAsync();
+                var NumberOfAllOrders = await _db.newOrders.Where(l => l.statuOrder == "قيد الإنتظار" && l.Date!.Value.AddDays(7) > DateTime.Now).CountAsync();
                 var currentOrders = await _db.values.Where(v => v.BrokerID == ID).GroupBy(v => v.newOrderId).Select(g => g.First().newOrderId) // استخراج newOrderId فقط
                     .Join(
                         _db.newOrders,
@@ -882,7 +882,7 @@ namespace User.Controllers
                         (newOrderId, order) => new
                         {
                             statuOrder = order.statuOrder
-                        }).Where(order => order.statuOrder =="لم يتم التنفيذ").CountAsync();
+                        }).Where(order => order.statuOrder == "لم يتم التنفيذ").CountAsync();
 
                 return Ok(new
                 {
@@ -940,7 +940,7 @@ namespace User.Controllers
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق "});
+                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
 

@@ -13,19 +13,19 @@ namespace firstProject.Controllers
     public class SignupController : ControllerBase
     {
         private readonly UserManager<User> _userManager;
-        private readonly ILogger<SignupController> _logger;
         private readonly EmailService _emailService;
-        private readonly IConfiguration _config;
         private readonly DB _db;
+        private readonly HttpClient _httpClient;
+        private readonly IHttpContextAccessor _httpContextAccessor;
 
 
-        public SignupController(UserManager<User> userManager, ILogger<SignupController> logger, EmailService emailService, IConfiguration config,DB db)
+        public SignupController(UserManager<User> userManager,EmailService emailService,DB db,IHttpContextAccessor httpContext,HttpClient httpClient)
         {
             _userManager = userManager;
-            _logger = logger;
             _emailService = emailService;
-            _config = config;
             _db = db;
+            _httpContextAccessor = httpContext;
+            _httpClient = httpClient;
         }
 
         //انشاء حساب للأفراد
@@ -60,7 +60,7 @@ namespace firstProject.Controllers
                 if (result.Succeeded)
                 {
                     await _userManager.AddToRoleAsync(user, "User");
-                    var verifyCode = await new Functions(_userManager, _db).GenerateVerifyCode(user, "VerifyUserEmail")!;
+                    var verifyCode = await new Functions(_userManager, _db,_httpContextAccessor,_httpClient).GenerateVerifyCode(user, "VerifyUserEmail")!;
                     var Body = string.Format(@"
 <!DOCTYPE html>
 <html lang=""ar"">
@@ -83,7 +83,7 @@ namespace firstProject.Controllers
 </body>
 </html>", verifyCode);
                     var send =   await _emailService.SendEmailAsync(user.Email!, "تأكيد بريدك الإلكتروني",Body);
-                    var tokenService = new Token_verfy(_config, _userManager, _logger);
+                    var tokenService = new Token_verfy(_userManager);
                     var generatedToken = await tokenService.GenerateToken(user);
 
                     Response.Cookies.Append("token", generatedToken, new CookieOptions
@@ -101,9 +101,8 @@ namespace firstProject.Controllers
 
                 return BadRequest(new ApiResponse { Message = "فشل في التسجيل" });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ أثناء انشاء حساب للأفراد");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "فشل في التسجيل" });
             }
         }
@@ -147,7 +146,7 @@ namespace firstProject.Controllers
                 if (result.Succeeded)
                 {
                     await _userManager.AddToRoleAsync(user, "Company");
-                    var verifyCode = await new Functions(_userManager, _db).GenerateVerifyCode(user, "VerifyCompanyEmail")!;
+                    var verifyCode = await new Functions(_userManager, _db, _httpContextAccessor, _httpClient).GenerateVerifyCode(user, "VerifyCompanyEmail")!;
                     var Body = string.Format(@"
 <!DOCTYPE html>
 <html lang=""ar"">
@@ -177,7 +176,7 @@ namespace firstProject.Controllers
 </body>
 </html>", verifyCode);
                     await _emailService.SendEmailAsync(user.Email!, "تأكيد بريدك الإلكتروني", Body);
-                    var tokenService = new Token_verfy(_config, _userManager, _logger);
+                    var tokenService = new Token_verfy(_userManager);
                     var generatedToken = await tokenService.GenerateToken(user);
 
                     Response.Cookies.Append("token", generatedToken, new CookieOptions
@@ -196,9 +195,8 @@ namespace firstProject.Controllers
 
                 return BadRequest(new ApiResponse { Message = "فشل في التسجيل" });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ أثناء عملية التسجيل");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "فشل في التسجيل" });
             }
         }
@@ -244,7 +242,7 @@ namespace firstProject.Controllers
                 if (result.Succeeded)
                 {
                     await _userManager.AddToRoleAsync(user, "Broker");
-                    var verifyCode = await new Functions(_userManager,_db).GenerateVerifyCode(user, "VerifyBrokerEmail")!;
+                    var verifyCode = await new Functions(_userManager, _db, _httpContextAccessor, _httpClient).GenerateVerifyCode(user, "VerifyBrokerEmail")!;
                     var Body = string.Format(@"
 <!DOCTYPE html>
 <html lang=""ar"">
@@ -274,7 +272,7 @@ namespace firstProject.Controllers
 </body>
 </html>", verifyCode);
                     await _emailService.SendEmailAsync(user.Email!, "تأكيد بريدك الإلكتروني", Body);
-                    var tokenService = new Token_verfy(_config, _userManager, _logger);
+                    var tokenService = new Token_verfy(_userManager);
                     var generatedToken = await tokenService.GenerateToken(user);
 
                     Response.Cookies.Append("token", generatedToken, new CookieOptions
@@ -292,9 +290,8 @@ namespace firstProject.Controllers
 
                 return BadRequest(new ApiResponse { Message = "فشل في التسجيل" });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ أثناء إنشاء حساب  المخلص");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "فشل في التسجيل" });
             }
         }

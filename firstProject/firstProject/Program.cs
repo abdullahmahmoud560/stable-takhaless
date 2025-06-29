@@ -6,23 +6,12 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Serilog;
-using Serilog.Debugging;
 using AspNetCoreRateLimit;
 using firstProject.DTO;
 using DotNetEnv;
 
 var builder = WebApplication.CreateBuilder(args);
 Env.Load();
-
-// ✅ تحميل Serilog مرة واحدة فقط
-builder.Host.UseSerilog((context, config) =>
-{
-    config.ReadFrom.Configuration(context.Configuration);
-});
-
-
-SelfLog.Enable(Console.Out);
 
 builder.Services.AddControllers();
 

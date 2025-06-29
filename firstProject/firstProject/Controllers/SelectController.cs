@@ -11,12 +11,10 @@ namespace firstProject.Controllers
     public class SelectController : ControllerBase
     {
         private readonly UserManager<User> _userManager;
-        private readonly ILogger<SelectController> _logger;
 
-        public SelectController(UserManager<User> userManager, ILogger<SelectController> logger)
+        public SelectController(UserManager<User> userManager)
         {
             _userManager = userManager;
-            _logger = logger;
         }
 
         //جلب بيانات المستخدم
@@ -49,9 +47,8 @@ namespace firstProject.Controllers
                 };
                 return Ok(CustomData);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ أثناء جلب البيانات");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ أثناء العملية" });
             }
         }
@@ -107,9 +104,8 @@ namespace firstProject.Controllers
 
                 return Ok(response);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ أثناء جلب البيانات");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ أثناء العملية" });
             }
         }

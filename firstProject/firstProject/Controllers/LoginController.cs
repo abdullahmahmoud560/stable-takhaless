@@ -13,18 +13,18 @@ namespace firstProject.Controllers
     {
         private readonly UserManager<User> _userManager;
         private readonly SignInManager<User> _signInManager;
-        private readonly ILogger<LoginController> _logger;
         private readonly EmailService _emailService;
-        private readonly IConfiguration _config;
         private readonly DB _db;
-        public LoginController(UserManager<User> userManager, SignInManager<User> signInManager, ILogger<LoginController> logger,EmailService emailService, IConfiguration config,DB db)
+        private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly HttpClient _httpClient;
+        public LoginController(UserManager<User> userManager, SignInManager<User> signInManager,EmailService emailService,DB db , IHttpContextAccessor httpContext, HttpClient httpClient)
         {
             _userManager = userManager;
             _signInManager = signInManager;
-            _logger = logger;
             _emailService = emailService;
-            _config = config;
             _db = db;
+            _httpContextAccessor = httpContext;
+            _httpClient = httpClient;
         }
 
         //تسجيل دخول المستخدم
@@ -53,7 +53,7 @@ namespace firstProject.Controllers
                 }
 
 
-                var verifyCode = await new Functions(_userManager,_db).GenerateVerifyCode(user, "VerifyLogin")!;
+                var verifyCode = await new Functions(_userManager, _db, _httpContextAccessor, _httpClient).GenerateVerifyCode(user, "VerifyLogin")!;
                 
                 var Body = string.Format(@"
 <!DOCTYPE html>
@@ -90,7 +90,7 @@ namespace firstProject.Controllers
                 user.lastLogin = DateTime.UtcNow;
                 await _userManager.UpdateAsync(user);
 
-                var tokenService = new Token_verfy(_config, _userManager, _logger);
+                var tokenService = new Token_verfy(_userManager);
                 var generatedToken = await tokenService.GenerateToken(user);
                 Response.Cookies.Append("token", generatedToken, new CookieOptions
                 {
@@ -110,8 +110,7 @@ namespace firstProject.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "خطأ أثناء تسجيل الدخول");
-                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "فشل في تسجيل الدخول"+ex.Message});
+                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "فشل في تسجيل الدخول" ,Data = ex.Message});
             }
         }
     }

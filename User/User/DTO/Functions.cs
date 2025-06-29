@@ -38,7 +38,6 @@ namespace User.DTO
                     Content = jsonContent
                 };
 
-                // ✅ إرسال التوكن في الهيدر كـ Authorization Bearer (لو الـ API بيحتاجه في الهيدر)
                 request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
                 // ولو السيرفر بيتوقعه في الكوكي:
@@ -174,16 +173,17 @@ namespace User.DTO
         {
             try
             {
-                string? token = _httpContextAccessor.HttpContext?.Request.Cookies["token"];
+                string? token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJJRCI6IjE0MDZkYTIzLTA5MjgtNGYwNC04ODA5LTU2NWRlNDFlZmYyNCIsIkVtYWlsIjoieS5hYmJnaGFnaEBnbWFpbC5jb20iLCJmdWxsTmFtZSI6ImFiZHVsbGFoIG1haG1vdWQiLCJwaG9uZU51bWJlciI6IisyMTA2OTEzODkyMyIsImp0aSI6ImQ4YzRhYzAzLTM5YTEtNDBiYy1iNDA2LTIyMmI2ZTM0MzdkNiIsIlJvbGUiOiJVc2VyIiwiZXhwIjoxNzUxODAwNDI2LCJpc3MiOiJodHRwczovL2ZpcnN0cHJvamVjdC50YWtobGVlc2FrLmNvbSIsImF1ZCI6Imh0dHBzOi8vZmlyc3Rwcm9qZWN0LnRha2hsZWVzYWsuY29tIn0.dFQtxR7o0bKVRFrIB8t4gBX6OXXh2lIPpa4u37MSC3E";
 
                 if (string.IsNullOrEmpty(token))
                 {
                     return JsonDocument.Parse("{\"success\": false, \"message\": \"Missing Authorization Token\"}").RootElement;
                 }
 
-                var requestData = new {
+                var requestData = new
+                {
                     message = logsDTO.Message,
-                    newOrderId =logsDTO.NewOrderId,
+                    newOrderId = logsDTO.NewOrderId,
                     userId = logsDTO.UserId,
                     notes = logsDTO.Notes
                 };
@@ -194,11 +194,7 @@ namespace User.DTO
                     Content = jsonContent
                 };
 
-                // ✅ إرسال التوكن في الهيدر كـ Authorization Bearer (لو الـ API بيحتاجه في الهيدر)
                 request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-
-                // ولو السيرفر بيتوقعه في الكوكي:
-                // request.Headers.Add("Cookie", $"token={token}");
 
                 var response = await _httpClient.SendAsync(request);
                 response.EnsureSuccessStatusCode();

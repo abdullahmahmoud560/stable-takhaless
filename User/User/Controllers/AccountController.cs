@@ -50,7 +50,7 @@ namespace User.Controllers
 
                 if (!result.Any())
                 {
-                    return Ok(new string[] {});
+                    return Ok(new string[] { });
                 }
 
                 List<GetOrdersDTO> ordersDTOs = new List<GetOrdersDTO>();
@@ -73,19 +73,19 @@ namespace User.Controllers
                             CustomerService.TryGetProperty("fullName", out JsonElement CustomerServiceName) &&
                             CustomerService.TryGetProperty("email", out JsonElement CustomerServiceEmail))
                             ordersDTOs.Add(new GetOrdersDTO
-                        {
-                            Id = order.Id.ToString(),
-                            statuOrder = order.statuOrder,
-                            Location = order.Location,
-                            typeOrder = typeOrder,
-                            Date = order.Date!.Value.ToString("dddd, dd MMMM yyyy", culture),
-                            Email = UserEmail.ToString(),
-                            fullName = UserName.ToString(),
-                            CustomerServiceEmail = CustomerServiceEmail.ToString(),
-                            CustomerServiceName = CustomerServiceName.ToString(),
-                            BrokerID = order.Accept,
-                            Value = value[0].Value,
-                        });
+                            {
+                                Id = order.Id.ToString(),
+                                statuOrder = order.statuOrder,
+                                Location = order.Location,
+                                typeOrder = typeOrder,
+                                Date = order.Date!.Value.ToString("dddd, dd MMMM yyyy", culture),
+                                Email = UserEmail.ToString(),
+                                fullName = UserName.ToString(),
+                                CustomerServiceEmail = CustomerServiceEmail.ToString(),
+                                CustomerServiceName = CustomerServiceName.ToString(),
+                                BrokerID = order.Accept,
+                                Value = value[0].Value,
+                            });
                     }
                 }
                 return Ok(ordersDTOs);
@@ -161,7 +161,7 @@ namespace User.Controllers
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق "});
+                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
 
@@ -187,7 +187,7 @@ namespace User.Controllers
                             .FirstOrDefaultAsync();
                         var value = await _db.values.Where(l => l.newOrderId == order.Id).ToListAsync();
                         var Response = await _functions.BrokerandUser(order.Accept!, order.AcceptAccount!);
-                        
+
                         if (Response.Value.TryGetProperty("user", out JsonElement User) &&
                             Response.Value.TryGetProperty("broker", out JsonElement Account))
                         {
@@ -196,24 +196,24 @@ namespace User.Controllers
                                 Account.TryGetProperty("fullName", out JsonElement AccountName) &&
                                 Account.TryGetProperty("email", out JsonElement AccountEmail))
                                 ordersDTOs.Add(new GetOrdersDTO
-                            {
-                                Id = order.Id.ToString(),
-                                statuOrder = order.statuOrder,
-                                Location = order.Location,
-                                typeOrder = typeOrder?.typeOrder,
-                                Date = order.Date!.Value.ToString("dddd, dd MMMM yyyy", culture),
-                                Email = UserEmail.GetString(),
-                                fullName = UserName.GetString(),
-                                AccountEmail = AccountEmail.GetString(),
-                                AccountName = AccountName.GetString(),
-                                BrokerID = order.Accept,
-                                Value = value[0].Value,
-                            });
+                                {
+                                    Id = order.Id.ToString(),
+                                    statuOrder = order.statuOrder,
+                                    Location = order.Location,
+                                    typeOrder = typeOrder?.typeOrder,
+                                    Date = order.Date!.Value.ToString("dddd, dd MMMM yyyy", culture),
+                                    Email = UserEmail.GetString(),
+                                    fullName = UserName.GetString(),
+                                    AccountEmail = AccountEmail.GetString(),
+                                    AccountName = AccountName.GetString(),
+                                    BrokerID = order.Accept,
+                                    Value = value[0].Value,
+                                });
                         }
                     }
                     return Ok(ordersDTOs);
                 }
-                return Ok(new string[] {});
+                return Ok(new string[] { });
             }
             catch (Exception)
             {
@@ -323,7 +323,7 @@ namespace User.Controllers
         {
             try
             {
-                if (getNewOrderID.newOrderId !=0)
+                if (getNewOrderID.newOrderId != 0)
                 {
                     var file = await _db.notesCustomerServices.Where(l => l.newOrderId == getNewOrderID.newOrderId).Select(l => new
                     {

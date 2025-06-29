@@ -1,11 +1,10 @@
-﻿using System.Net.Mail;
-using System.Security.Claims;
-using firstProject.DTO;
+﻿using firstProject.DTO;
 using firstProject.Model;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace firstProject.Controllers
 {
@@ -14,16 +13,12 @@ namespace firstProject.Controllers
     public class PasswordController : ControllerBase
     {
         private readonly UserManager<User> _userManager;
-        private readonly IConfiguration _configuration;
-        private readonly ILogger<PasswordController> _logger;
         private readonly EmailService _emailService;
 
 
-        public PasswordController(UserManager<User> userManager, IConfiguration configuration, ILogger<PasswordController> logger, EmailService emailService)
+        public PasswordController(UserManager<User> userManager, EmailService emailService)
         {
             _userManager = userManager;
-            _configuration = configuration;
-            _logger = logger;
             _emailService = emailService;
         }
 
@@ -41,14 +36,13 @@ namespace firstProject.Controllers
                     return BadRequest(new ApiResponse { Message = "فشل في العملية" });
                 }
 
-                // ⚡ OPTIMIZED: Fast random code generation
-                var verifyCode = new Random().Next(100000, 999999).ToString();
+                var verifyCode = await _userManager.GenerateTwoFactorTokenAsync(user, "Email");
                 if (string.IsNullOrEmpty(verifyCode))
                 {
                     return BadRequest(new ApiResponse { Message = "فشل في العملية" });
                 }
                 await _userManager.SetAuthenticationTokenAsync(user, "Default", "ChangePassword", DateTime.UtcNow.ToString());
-                Token tokenService = new Token(_configuration, _userManager, _logger);
+                Token tokenService = new Token(_userManager);
                 var generatedToken = await tokenService.GenerateToken(user);
 
                 Response.Cookies.Append("token", generatedToken, new CookieOptions
@@ -93,10 +87,9 @@ namespace firstProject.Controllers
                     Message = "تم إرسال الرسالة بنجاح",
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ أثناء عملية استعادة كلمة المرور");
-                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ أثناء العملية"+ex.Message });
+                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ أثناء العملية"});
             }
         }
 
@@ -134,9 +127,8 @@ namespace firstProject.Controllers
                 }
 
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ أثناء عملية إعادة تعيين كلمة المرور");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ أثناء العملية" });
             }
         }

@@ -1,13 +1,12 @@
-﻿using System.Globalization;
-using System.Security.Claims;
-using System.Text.Json;
-using firstProject.DTO;
+﻿using firstProject.DTO;
 using firstProject.Model;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
+using System.Security.Claims;
+using System.Text.Json;
 
 namespace firstProject.Controllers
 {
@@ -16,19 +15,14 @@ namespace firstProject.Controllers
     public class AdminController : ControllerBase
     {
         private readonly UserManager<User> _userManager;
-        private readonly ILogger<AdminController> _logger;
-        private readonly IDataProtector _protector;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly HttpClient httpClient1;
 
-        public AdminController(UserManager<User> userManager, ILogger<AdminController> logger, IDataProtectionProvider protector,HttpClient httpClient,IHttpContextAccessor httpContextAccessor)
+        public AdminController(UserManager<User> userManager, HttpClient httpClient, IHttpContextAccessor httpContextAccessor)
         {
             _userManager = userManager;
-            _logger = logger;
-            _protector = protector.CreateProtector("OrderIdProtector");
             httpClient1 = httpClient;
             _httpContextAccessor = httpContextAccessor;
-
         }
 
         //جلب جميع المستخدمين
@@ -42,7 +36,6 @@ namespace firstProject.Controllers
                 List<UserDTO> users = new List<UserDTO>();
                 if (allUsers is not null)
                 {
-
                     for (int i = 0; i < allUsers.Count; i++)
                     {
                         var roles = await _userManager.GetRolesAsync(allUsers[i]);
@@ -68,10 +61,9 @@ namespace firstProject.Controllers
                 }
                 return Ok(new string[] { });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
-                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق"});
+                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق" });
             }
         }
 
@@ -80,14 +72,12 @@ namespace firstProject.Controllers
         [HttpGet("Get-Broker")]
         public async Task<IActionResult> getAllBroker()
         {
-
             try
             {
                 var allUsers = await _userManager.Users.ToListAsync();
                 List<UserDTO> users = new List<UserDTO>();
                 if (allUsers is not null)
                 {
-
                     for (int i = 0; i < allUsers.Count; i++)
                     {
                         var roles = await _userManager.GetRolesAsync(allUsers[i]);
@@ -114,9 +104,8 @@ namespace firstProject.Controllers
                 }
                 return Ok(new string[] { });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
@@ -126,14 +115,12 @@ namespace firstProject.Controllers
         [HttpGet("Get-CustomerService")]
         public async Task<IActionResult> getAllCustomerService()
         {
-
             try
             {
                 var allUsers = await _userManager.Users.ToListAsync();
                 List<UserDTO> users = new List<UserDTO>();
                 if (allUsers is not null)
                 {
-
                     for (int i = 0; i < allUsers.Count; i++)
                     {
                         var roles = await _userManager.GetRolesAsync(allUsers[i]);
@@ -160,9 +147,8 @@ namespace firstProject.Controllers
                 }
                 return Ok(new string[] { });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
@@ -172,14 +158,12 @@ namespace firstProject.Controllers
         [HttpGet("Get-Account")]
         public async Task<IActionResult> getAllAccount()
         {
-
             try
             {
                 var allUsers = await _userManager.Users.ToListAsync();
                 List<UserDTO> users = new List<UserDTO>();
                 if (allUsers is not null)
                 {
-
                     for (int i = 0; i < allUsers.Count; i++)
                     {
                         var roles = await _userManager.GetRolesAsync(allUsers[i]);
@@ -206,9 +190,8 @@ namespace firstProject.Controllers
                 }
                 return Ok(new string[] { });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
@@ -218,14 +201,12 @@ namespace firstProject.Controllers
         [HttpGet("Get-Manager")]
         public async Task<IActionResult> getAllManager()
         {
-
             try
             {
                 var allUsers = await _userManager.Users.ToListAsync();
                 List<UserDTO> users = new List<UserDTO>();
                 if (allUsers is not null)
                 {
-
                     for (int i = 0; i < allUsers.Count; i++)
                     {
                         var roles = await _userManager.GetRolesAsync(allUsers[i]);
@@ -252,9 +233,8 @@ namespace firstProject.Controllers
                 }
                 return Ok(new string[] { });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
@@ -288,9 +268,8 @@ namespace firstProject.Controllers
                 }
                 return BadRequest();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
@@ -317,9 +296,8 @@ namespace firstProject.Controllers
                 }
                 return BadRequest(new ApiResponse { Message = "خطأ في البيانات المدخلة" });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
@@ -335,7 +313,6 @@ namespace firstProject.Controllers
                 List<UserDTO> users = new List<UserDTO>();
                 if (blackList is not null)
                 {
-
                     for (int i = 0; i < blackList.Count; i++)
                     {
                         var roles = await _userManager.GetRolesAsync(blackList[i]);
@@ -358,9 +335,8 @@ namespace firstProject.Controllers
                 }
                 return Ok(new string[] { });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
@@ -393,9 +369,8 @@ namespace firstProject.Controllers
                     return Ok(new ApiResponse { Message = "تم تغيير الصلاحية بنجاح" });
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
@@ -412,7 +387,6 @@ namespace firstProject.Controllers
                     var user = await _userManager.FindByEmailAsync(getInformationDTO.Email!);
                     if (user != null)
                     {
-
                         return Ok(new { user.Email, user.fullName });
                     }
                     else
@@ -422,9 +396,8 @@ namespace firstProject.Controllers
                 }
                 return Ok(new ApiResponse { Message = "" });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
@@ -441,9 +414,8 @@ namespace firstProject.Controllers
                 var allBrokers = await _userManager.GetUsersInRoleAsync("Broker");
                 return Ok(allUsers.Count + allCompanies.Count + allBrokers.Count);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return Ok(new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق" });
             }
         }
@@ -459,16 +431,15 @@ namespace firstProject.Controllers
                 List<UserDTO> users = new List<UserDTO>();
                 if (allUsers is not null)
                 {
-
                     for (int i = 0; i < allUsers.Count; i++)
                     {
                         var roles = await _userManager.GetRolesAsync(allUsers[i]);
                         var role = string.Join(", ", roles);
                         if (role.Equals("Admin"))
                         {
-                            role= "مسؤول";
+                            role = "مسؤول";
                         }
-                        else if(role.Equals("Manager"))
+                        else if (role.Equals("Manager"))
                         {
                             role = "مدير";
                         }
@@ -491,7 +462,7 @@ namespace firstProject.Controllers
                         else if (role.Equals("Account"))
                         {
                             role = "محاسب";
-                        }   
+                        }
                         if (role != null)
                         {
                             users.Add(new UserDTO
@@ -510,9 +481,8 @@ namespace firstProject.Controllers
                 }
                 return Ok(new string[] { });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
@@ -551,15 +521,14 @@ namespace firstProject.Controllers
                 }
                 return NotFound(new ApiResponse { Message = "بيانات المستخدم غير موجودة" });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
 
         //عرض الصفحة الشخصية للمسؤول
-        [Authorize(Roles =("Admin,Manager"))]
+        [Authorize(Roles = ("Admin,Manager"))]
         [HttpGet("Profile-Show-Admin/{ID}")]
         public async Task<IActionResult> profileShowAdmin(string ID)
         {
@@ -571,7 +540,7 @@ namespace firstProject.Controllers
                 }
 
                 var data = await _userManager.FindByIdAsync(ID.ToString()!);
-                var  role = await _userManager.GetRolesAsync(data!);
+                var role = await _userManager.GetRolesAsync(data!);
                 var roles = string.Join(", ", role);
                 if (data != null)
                 {
@@ -593,12 +562,12 @@ namespace firstProject.Controllers
                 }
                 return NotFound(new ApiResponse { Message = "بيانات المستخدم غير موجودة" });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
+
         // التخصوصات للمدير
         [Authorize(Roles = "Admin")]
         [HttpPost("Set-Permissions")]
@@ -628,9 +597,8 @@ namespace firstProject.Controllers
                 }
                 return Ok(addClaims);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
@@ -651,9 +619,8 @@ namespace firstProject.Controllers
                 }
                 return BadRequest(new ApiResponse { Message = "برجاء ملئ البيانات المطلوبة" });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
@@ -689,9 +656,8 @@ namespace firstProject.Controllers
                 }
                 return Ok(new string[] { });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
@@ -712,9 +678,8 @@ namespace firstProject.Controllers
                 }
                 return BadRequest(new ApiResponse { Message = "برجاء ملئ البيانات المطلوبة" });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
@@ -750,14 +715,12 @@ namespace firstProject.Controllers
                 }
                 return Ok(users);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
-                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق "});
+                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
-        
-        
+
         [Authorize(Roles = "Admin,Manager")]
         [HttpGet("Get-Not-Active-Users")]
         public async Task<IActionResult> getNotActiveUsers()
@@ -789,10 +752,9 @@ namespace firstProject.Controllers
                 }
                 return Ok(users);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "خطأ اثناء تنفيذ العملية");
-                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق "});
+                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
     }

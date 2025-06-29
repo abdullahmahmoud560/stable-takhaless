@@ -1,20 +1,15 @@
-﻿using System.Net.Http.Headers;
-using System.Net.Http;
+﻿using System.Net;
+using System.Net.Http.Headers;
 using System.Text.Json;
-using Microsoft.AspNetCore.Http;
-using Serilog.Context;
-using System.Net;
 
 namespace User.DTO
 {
     public class Middleware
     {
-        private readonly RequestDelegate _next;
         private readonly HttpClient _httpClient;
 
-        public Middleware(RequestDelegate next, HttpClient httpClient)
+        public Middleware(HttpClient httpClient)
         {
-            _next = next;
             _httpClient = httpClient;
         }
 

@@ -13,13 +13,11 @@ namespace User.Controllers
     {
         private readonly DB _db;
         private readonly Functions _functions;
-        private readonly HangFire _emailService;
 
-        public AdminController(DB db, Functions functions, HangFire emailService)
+        public AdminController(DB db, Functions functions)
         {
             _db = db;
             _functions = functions;
-            _emailService = emailService;
         }
 
         [Authorize(Roles = "Admin,Manager")]
@@ -39,7 +37,7 @@ namespace User.Controllers
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق"});
+                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق" });
             }
         }
 
