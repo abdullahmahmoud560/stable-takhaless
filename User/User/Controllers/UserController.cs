@@ -158,7 +158,7 @@ namespace User.Controllers
                         Notes = string.Empty,
                         Message = "تم اضافة طلب جديد"
                     };
-                    return Ok (await _functions.Logs(Logs));
+                    await _functions.Logs(Logs);
 
                     var expire = newOrder.Date.Value.AddDays(7);
                     var Response = await _functions.SendAPI(userId!);
