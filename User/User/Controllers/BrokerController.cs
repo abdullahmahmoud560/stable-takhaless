@@ -849,13 +849,55 @@ namespace User.Controllers
         {
             try
             {
+                var Role = User.FindFirstValue("Role");
                 var ID = User.FindFirstValue("ID");
                 if (string.IsNullOrEmpty(ID))
                 {
                     return BadRequest(new ApiResponse { Message = "لم يتم العثور على معرف المستخدم في بيانات الاعتماد" });
                 }
+
                 var NumberOfAllOrders = await _db.newOrders.Where(l => l.statuOrder == "قيد الإنتظار" && l.Date!.Value.AddDays(7) > DateTime.Now).CountAsync();
-                var currentOrders = await _db.values.Where(v => v.BrokerID == ID).GroupBy(v => v.newOrderId).Select(g => g.First().newOrderId) // استخراج newOrderId فقط
+                if(Role == "Admin")
+                {
+                    var currentOrdersAdmin = await _db.values.GroupBy(v => v.newOrderId).Select(g => g.First().newOrderId)
+                   .Join(
+                       _db.newOrders,
+                       newOrderId => newOrderId,
+                       order => order.Id,
+                       (newOrderId, order) => new
+                       {
+                           statuOrder = order.statuOrder
+                       }).Where(order => order.statuOrder == "تحت الإجراء").CountAsync();
+
+                    var applyOrdersAdmin = await _db.values.GroupBy(v => v.newOrderId).Select(g => g.First().newOrderId)
+                        .Join(
+                            _db.newOrders,
+                            newOrderId => newOrderId,
+                            order => order.Id,
+                            (newOrderId, order) => new
+                            {
+                                statuOrder = order.statuOrder
+                            }).Where(order => order.statuOrder == "قيد الإنتظار").CountAsync();
+
+                    var customerServiceOrdersAdmin = await _db.values.GroupBy(v => v.newOrderId).Select(g => g.First().newOrderId)
+                        .Join(
+                            _db.newOrders,
+                            newOrderId => newOrderId,
+                            order => order.Id,
+                            (newOrderId, order) => new
+                            {
+                                statuOrder = order.statuOrder
+                            }).Where(order => order.statuOrder == "لم يتم التنفيذ").CountAsync();
+
+                    return Ok(new
+                    {
+                        NumberOfAllOrders = NumberOfAllOrders,
+                        currentOrders = currentOrdersAdmin,
+                        applyOrders = applyOrdersAdmin,
+                        customerServiceOrders = customerServiceOrdersAdmin
+                    });
+                }
+                var currentOrders = await _db.values.Where(v => v.BrokerID == ID).GroupBy(v => v.newOrderId).Select(g => g.First().newOrderId)
                     .Join(
                         _db.newOrders,
                         newOrderId => newOrderId,
