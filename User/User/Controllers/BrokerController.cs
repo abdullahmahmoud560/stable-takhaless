@@ -91,7 +91,7 @@ namespace User.Controllers
 
                 var fileNames = await _db.uploadFiles
                                         .Where(f => f.newOrderId == order.Id)
-                                        .Select(f => f.fileName)
+                                        .Select(f =>new { f.fileName , f.fileUrl })
                                         .ToArrayAsync();
                 List<GetDetailsOfOrders> details = new List<GetDetailsOfOrders>();
 
@@ -114,10 +114,11 @@ namespace User.Controllers
                     Weight = detailsOfOrder[0].Weight,
                     Number = detailsOfOrder[0].Number,
                     Size = detailsOfOrder[0].Size,
-                    fileName = fileNames!,
+                    fileName = fileNames.Select(g => g.fileName).ToArray()!,
                     City = order.City,
                     Town = order.Town,
                     zipCode = order.zipCode,
+                    fileUrl = fileNames.Select(g => g.fileUrl).ToArray()! 
                 });
 
                 for (int i = 1; i < detailsOfOrder.Count; i++)

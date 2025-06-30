@@ -11,5 +11,6 @@
         public string? City { get; set; }
         public string? Town { get; set; }
         public string? zipCode { get; set; }
+        public string[]? fileUrl { get; set; }
     }
 }
