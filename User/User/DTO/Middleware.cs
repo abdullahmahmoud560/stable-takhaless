@@ -29,7 +29,7 @@ namespace User.DTO
             }
 
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-            HttpResponseMessage response = await _httpClient.GetAsync("https://firstproject.takhleesak.com/api/Checker");
+            HttpResponseMessage response = await _httpClient.GetAsync("http://firstproject-service:9100/api/Checker");
             string responseBody = await response.Content.ReadAsStringAsync();
 
             using JsonDocument doc = JsonDocument.Parse(responseBody);

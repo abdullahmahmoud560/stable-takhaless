@@ -34,7 +34,7 @@ public class SendApis
             var requestData = new { BrokerID = brokerId };
             var jsonContent = new StringContent(JsonSerializer.Serialize(requestData), Encoding.UTF8, "application/json");
 
-            using var request = new HttpRequestMessage(HttpMethod.Post, "https://user.takhleesak.com/api/Get-Count-Of-Orders-From-Active-Users")
+            using var request = new HttpRequestMessage(HttpMethod.Post, "http://user-service:80/api/Get-Count-Of-Orders-From-Active-Users")
             {
                 Content = jsonContent
             };

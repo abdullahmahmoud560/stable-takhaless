@@ -28,7 +28,7 @@ namespace User.DTO
 
                 var requestData = new { ID = ID };
                 var jsonContent = new StringContent(JsonSerializer.Serialize(requestData), Encoding.UTF8, "application/json");
-                using var request = new HttpRequestMessage(HttpMethod.Post, "https://firstproject.takhleesak.com/api/Select-Data")
+                using var request = new HttpRequestMessage(HttpMethod.Post, "http://firstproject-service:9100/api/Select-Data")
                 {
                     Content = jsonContent
                 };
@@ -78,7 +78,7 @@ namespace User.DTO
                 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
                 // ✅ إضافة الكوكيز يدويًا في الطلب
-                Uri apiUri = new Uri("https://firstproject.takhleesak.com/api/Select-Broker-User");
+                Uri apiUri = new Uri("http://firstproject-service:9100/api/Select-Broker-User");
                 handler.CookieContainer.Add(apiUri, new Cookie("token", token));
 
                 var requestData = new { ID = ID, BrokerID = BrokerID };
@@ -115,7 +115,7 @@ namespace User.DTO
                 // إضافة التوكن إلى ملفات تعريف الارتباط الخاصة بالطلب
                 _httpClient.DefaultRequestHeaders.Add("Cookie", $"token={token}");
 
-                HttpResponseMessage response = await _httpClient.GetAsync("https://firstproject.takhleesak.com/api/Statictis");
+                HttpResponseMessage response = await _httpClient.GetAsync("http://firstproject-service:9100/api/Statictis");
 
                 response.EnsureSuccessStatusCode();
 
@@ -148,7 +148,7 @@ namespace User.DTO
                 _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
                 // ✅ طلب الـ API
-                HttpResponseMessage response = await _httpClient.GetAsync("https://firstproject.takhleesak.com/api/Get-Broker");
+                HttpResponseMessage response = await _httpClient.GetAsync("http://firstproject-service:9100/api/Get-Broker");
                 response.EnsureSuccessStatusCode();
 
                 string responseString = await response.Content.ReadAsStringAsync();
@@ -182,7 +182,7 @@ namespace User.DTO
                     notes = logsDTO.Notes
                 };
                 var jsonContent = new StringContent(JsonSerializer.Serialize(requestData), Encoding.UTF8, "application/json");
-                using var request = new HttpRequestMessage(HttpMethod.Post, "https://admin.takhleesak.com/api/Add-Logs")
+                using var request = new HttpRequestMessage(HttpMethod.Post, "http://admin-service:80/api/Add-Logs")
                 {
                     Content = jsonContent
                 };

@@ -71,7 +71,7 @@ namespace firstProject.DTO
                 var requestData = new { ID = ID };
                 var jsonContent = new StringContent(JsonSerializer.Serialize(requestData), Encoding.UTF8, "application/json");
 
-                using var request = new HttpRequestMessage(HttpMethod.Post, "https://Admin.takhleesak.com/api/Select-Data")
+                using var request = new HttpRequestMessage(HttpMethod.Post, "http://firstproject-service:9100/api/Select-Data")
                 {
                     Content = jsonContent
                 };
