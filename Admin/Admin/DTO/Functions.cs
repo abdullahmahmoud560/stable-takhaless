@@ -31,7 +31,7 @@ namespace Admin.DTO
                 var requestData = new { ID = ID };
                 var jsonContent = new StringContent(JsonSerializer.Serialize(requestData), Encoding.UTF8, "application/json");
 
-                HttpResponseMessage response = await _httpClient.PostAsync("https://takhleesak.runasp.net/api/Select-Data", jsonContent);
+                HttpResponseMessage response = await _httpClient.PostAsync("https://firstproject.takhleesak.com/api/Select-Data", jsonContent);
 
                 response.EnsureSuccessStatusCode();
 

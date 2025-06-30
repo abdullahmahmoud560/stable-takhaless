@@ -29,7 +29,7 @@ namespace User.DTO
             }
 
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-            HttpResponseMessage response = await _httpClient.GetAsync("https://takhleesak.runasp.net/api/Checker");
+            HttpResponseMessage response = await _httpClient.GetAsync("https://firstproject.takhleesak.com/api/Checker");
             string responseBody = await response.Content.ReadAsStringAsync();
 
             using JsonDocument doc = JsonDocument.Parse(responseBody);
