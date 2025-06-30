@@ -1,10 +1,7 @@
-﻿using Google.Protobuf.WellKnownTypes;
-using Org.BouncyCastle.Utilities;
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
-using User.Model;
 
 namespace User.DTO
 {
@@ -12,7 +9,6 @@ namespace User.DTO
     {
         private readonly HttpClient _httpClient;
         private readonly IHttpContextAccessor _httpContextAccessor;
-        private readonly string _apiUrl = "https://firstproject.takhleesak.com/api/";
         public Functions(HttpClient client, IHttpContextAccessor httpContextAccessor)
         {
             _httpClient = client;
@@ -32,8 +28,7 @@ namespace User.DTO
 
                 var requestData = new { ID = ID };
                 var jsonContent = new StringContent(JsonSerializer.Serialize(requestData), Encoding.UTF8, "application/json");
-                Console.WriteLine(_apiUrl + "Select-Data");
-                using var request = new HttpRequestMessage(HttpMethod.Post, _apiUrl + "Select-Data")
+                using var request = new HttpRequestMessage(HttpMethod.Post, "https://firstproject.takhleesak.com/api/Select-Data")
                 {
                     Content = jsonContent
                 };
@@ -83,7 +78,7 @@ namespace User.DTO
                 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
                 // ✅ إضافة الكوكيز يدويًا في الطلب
-                Uri apiUri = new Uri(_apiUrl + "Select-Broker-User");
+                Uri apiUri = new Uri("https://firstproject.takhleesak.com/api/Select-Broker-User");
                 handler.CookieContainer.Add(apiUri, new Cookie("token", token));
 
                 var requestData = new { ID = ID, BrokerID = BrokerID };
@@ -120,7 +115,7 @@ namespace User.DTO
                 // إضافة التوكن إلى ملفات تعريف الارتباط الخاصة بالطلب
                 _httpClient.DefaultRequestHeaders.Add("Cookie", $"token={token}");
 
-                HttpResponseMessage response = await _httpClient.GetAsync(_apiUrl + "Statictis");
+                HttpResponseMessage response = await _httpClient.GetAsync("https://firstproject.takhleesak.com/api/Statictis");
 
                 response.EnsureSuccessStatusCode();
 
@@ -153,7 +148,7 @@ namespace User.DTO
                 _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
                 // ✅ طلب الـ API
-                HttpResponseMessage response = await _httpClient.GetAsync(_apiUrl + "Get-Broker");
+                HttpResponseMessage response = await _httpClient.GetAsync("https://firstproject.takhleesak.com/api/Get-Broker");
                 response.EnsureSuccessStatusCode();
 
                 string responseString = await response.Content.ReadAsStringAsync();
@@ -173,8 +168,7 @@ namespace User.DTO
         {
             try
             {
-                string? token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJJRCI6IjE0MDZkYTIzLTA5MjgtNGYwNC04ODA5LTU2NWRlNDFlZmYyNCIsIkVtYWlsIjoieS5hYmJnaGFnaEBnbWFpbC5jb20iLCJmdWxsTmFtZSI6ImFiZHVsbGFoIG1haG1vdWQiLCJwaG9uZU51bWJlciI6IisyMTA2OTEzODkyMyIsImp0aSI6ImQ4YzRhYzAzLTM5YTEtNDBiYy1iNDA2LTIyMmI2ZTM0MzdkNiIsIlJvbGUiOiJVc2VyIiwiZXhwIjoxNzUxODAwNDI2LCJpc3MiOiJodHRwczovL2ZpcnN0cHJvamVjdC50YWtobGVlc2FrLmNvbSIsImF1ZCI6Imh0dHBzOi8vZmlyc3Rwcm9qZWN0LnRha2hsZWVzYWsuY29tIn0.dFQtxR7o0bKVRFrIB8t4gBX6OXXh2lIPpa4u37MSC3E";
-
+                string? token = _httpContextAccessor.HttpContext?.Request.Cookies["token"];
                 if (string.IsNullOrEmpty(token))
                 {
                     return JsonDocument.Parse("{\"success\": false, \"message\": \"Missing Authorization Token\"}").RootElement;
@@ -188,7 +182,6 @@ namespace User.DTO
                     notes = logsDTO.Notes
                 };
                 var jsonContent = new StringContent(JsonSerializer.Serialize(requestData), Encoding.UTF8, "application/json");
-                Console.WriteLine(_apiUrl + "Select-Data");
                 using var request = new HttpRequestMessage(HttpMethod.Post, "https://admin.takhleesak.com/api/Add-Logs")
                 {
                     Content = jsonContent

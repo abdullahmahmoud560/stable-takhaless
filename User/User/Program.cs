@@ -111,6 +111,7 @@ builder.Services.AddSignalR();
 builder.Services.AddHealthChecks();
 
 var app = builder.Build();
+app.UseStaticFiles();
 
 // ✅ تفعيل Swagger
 app.UseSwagger();
