@@ -650,40 +650,6 @@ namespace User.Controllers
         }
 
 
-        //[Authorize(Roles = "Broker,User,Admin,Manager,Company")]
-        //[HttpPost("DownloadFiles")]
-        //public async Task<IActionResult> downloadFiles(DownloadFiles downloadFile)
-        //{
-        //    try
-        //    {
-        //        var file = await _db.uploadFiles.Where(l => l.newOrderId == downloadFile.newOrderId).ToListAsync();
-        //        if (file.Any())
-        //        {
-        //            var updatedFiles = file
-        //                .Select((f, index) => new
-        //                {
-        //                    id = index,
-        //                    fileName = f.fileName,
-        //                    fileData = f.fileUrl,
-        //                    newOrder = f.newOrder,
-        //                    ContentType = f.ContentType,
-        //                    newOrderId = f.newOrderId
-        //                }).ToList();
-
-        //            if (updatedFiles != null && updatedFiles.Count > downloadFile.Id!.Value)
-        //            {
-        //                Response.Headers.Add("Content-Disposition", $"attachment; filename*=UTF-8''{Uri.EscapeDataString(updatedFiles[downloadFile.Id!.Value].fileName)}");
-        //                return File(updatedFiles[downloadFile.Id!.Value].fileData!, updatedFiles[downloadFile.Id!.Value].ContentType!, updatedFiles[downloadFile.Id!.Value].fileName);
-        //            }
-        //        }
-        //        return BadRequest(new ApiResponse { Message = "خطأ في البيانات المدخلة" });
-        //    }
-        //    catch (Exception)
-        //    {
-        //        return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
-        //    }
-        //}
-
         //السجل للمخلص
         [Authorize(Roles = "Broker,User,Company")]
         [HttpGet("Get-All-Orders-Brokers")]

@@ -318,46 +318,58 @@ namespace User.Controllers
             {
                 var ID = User.FindFirstValue("ID");
                 if (notesFromCustomerServiceDTO == null)
-                {
                     return BadRequest("البيانات المرسلة غير صحيحة");
-                }
 
                 if (!string.IsNullOrEmpty(notesFromCustomerServiceDTO.Notes) || notesFromCustomerServiceDTO.formFile != null)
                 {
                     var isFound = await _db.notesCustomerServices
                         .FirstOrDefaultAsync(l => l.newOrderId == notesFromCustomerServiceDTO.newOrderId);
 
-                    if (isFound != null) // تحديث البيانات إن كان الطلب موجودًا
+                    string? fileUrl = null;
+                    string? originalFileName = null;
+
+                    if (notesFromCustomerServiceDTO.formFile != null)
+                    {
+                        originalFileName = Path.GetFileNameWithoutExtension(notesFromCustomerServiceDTO.formFile.FileName);
+                        var safeFileName = originalFileName.Replace(" ", "-");
+                        var fileExtension = Path.GetExtension(notesFromCustomerServiceDTO.formFile.FileName);
+
+                        var uniqueFileName = $"{safeFileName}_{Guid.NewGuid()}{fileExtension}";
+
+                        var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "CustomerFiles");
+                        if (!Directory.Exists(uploadsFolder))
+                            Directory.CreateDirectory(uploadsFolder);
+
+                        var filePath = Path.Combine(uploadsFolder, uniqueFileName);
+
+                        using (var stream = new FileStream(filePath, FileMode.Create))
+                        {
+                            await notesFromCustomerServiceDTO.formFile.CopyToAsync(stream);
+                        }
+
+                        fileUrl = $"/CustomerFiles/{uniqueFileName}";
+                    }
+
+                    if (isFound != null)
                     {
                         isFound.Notes = notesFromCustomerServiceDTO.Notes;
-
-                        if (notesFromCustomerServiceDTO.formFile != null)
+                        if (fileUrl != null)
                         {
-                            using var memoryStream = new MemoryStream();
-                            await notesFromCustomerServiceDTO.formFile.CopyToAsync(memoryStream);
-                            isFound.fileName = notesFromCustomerServiceDTO.formFile.FileName;
-                            isFound.fileData = memoryStream.ToArray();
-                            isFound.ContentType = notesFromCustomerServiceDTO.formFile.ContentType;
+                            isFound.fileUrl = fileUrl;
+                            isFound.fileName = originalFileName;
                         }
 
                         _db.notesCustomerServices.Update(isFound);
                     }
-                    else // إضافة سجل جديد إن لم يكن موجودًا
+                    else
                     {
                         var newFile = new NotesCustomerService
                         {
                             Notes = notesFromCustomerServiceDTO.Notes,
                             newOrderId = notesFromCustomerServiceDTO.newOrderId!.Value,
+                            fileUrl = fileUrl,
+                            fileName = originalFileName
                         };
-
-                        if (notesFromCustomerServiceDTO.formFile != null)
-                        {
-                            using var memoryStream = new MemoryStream();
-                            await notesFromCustomerServiceDTO.formFile.CopyToAsync(memoryStream);
-                            newFile.fileName = notesFromCustomerServiceDTO.formFile.FileName;
-                            newFile.fileData = memoryStream.ToArray();
-                            newFile.ContentType = notesFromCustomerServiceDTO.formFile.ContentType;
-                        }
 
                         await _db.notesCustomerServices.AddAsync(newFile);
                     }
@@ -376,6 +388,7 @@ namespace User.Controllers
                         return Ok(new ApiResponse { Message = "تم تقديم الملاحظات بنجاح" });
                     }
                 }
+
                 return BadRequest("يرجى إدخال ملاحظات أو إرفاق ملف.");
             }
             catch (Exception)
