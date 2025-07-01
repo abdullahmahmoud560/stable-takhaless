@@ -1,6 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-
-namespace User.Model
+﻿namespace User.Model
 {
     public class NotesCustomerService
     {
