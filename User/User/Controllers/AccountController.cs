@@ -24,16 +24,19 @@ namespace User.Controllers
         }
 
         [Authorize(Roles = "Account,Admin,Manager")]
-        [HttpGet("Get-All-Done-Accept-Orders")]
-        public async Task<IActionResult> getAllDoneAcceptOrders()
+        [HttpGet("Get-All-Done-Accept-Orders/{Page}")]
+        public async Task<IActionResult> GetAllDoneAcceptOrders(int Page)
         {
             try
             {
+                const int PageSize = 10;
+
                 CultureInfo culture = new CultureInfo("ar-SA")
                 {
                     DateTimeFormat = { Calendar = new GregorianCalendar() },
                     NumberFormat = { DigitSubstitution = DigitShapes.NativeNational }
                 };
+
                 var result = await _db.newOrders
                     .Where(l => l.statuOrder == "تم التنفيذ")
                     .Select(order => new
@@ -57,12 +60,15 @@ namespace User.Controllers
 
                 foreach (var order in result)
                 {
-
                     var typeOrder = await _db.typeOrders
                         .Where(l => l.newOrderId == order.Id)
                         .Select(l => l.typeOrder)
                         .FirstOrDefaultAsync();
-                    var value = await _db.values.Where(l => l.newOrderId == order.Id).ToListAsync();
+
+                    var value = await _db.values
+                        .Where(l => l.newOrderId == order.Id)
+                        .ToListAsync();
+
                     var Response = await _functions.BrokerandUser(order.Accept!, order.AcceptCustomerService!);
 
                     if (Response.Value.TryGetProperty("user", out JsonElement User) &&
@@ -72,6 +78,7 @@ namespace User.Controllers
                             User.TryGetProperty("email", out JsonElement UserEmail) &&
                             CustomerService.TryGetProperty("fullName", out JsonElement CustomerServiceName) &&
                             CustomerService.TryGetProperty("email", out JsonElement CustomerServiceEmail))
+                        {
                             ordersDTOs.Add(new GetOrdersDTO
                             {
                                 Id = order.Id.ToString(),
@@ -84,17 +91,35 @@ namespace User.Controllers
                                 CustomerServiceEmail = CustomerServiceEmail.ToString(),
                                 CustomerServiceName = CustomerServiceName.ToString(),
                                 BrokerID = order.Accept,
-                                Value = value[0].Value,
+                                Value = value.FirstOrDefault()?.Value ?? 0
                             });
+                        }
                     }
                 }
-                return Ok(ordersDTOs);
+
+                var totalCount = ordersDTOs.Count;
+                var totalPages = (int)Math.Ceiling((double)totalCount / PageSize);
+
+                var paginatedOrders = ordersDTOs
+                    .Skip((Page - 1) * PageSize)
+                    .Take(PageSize)
+                    .ToList();
+
+                return Ok(new
+                {
+                    TotalPages = totalPages,
+                    Page = Page,
+                    totalOrders = totalCount,
+                    data = paginatedOrders
+                });
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
+
 
         [Authorize(Roles = "Account,Admin")]
         [HttpPost("Change-Statu-Account")]
@@ -166,86 +191,45 @@ namespace User.Controllers
         }
 
         [Authorize(Roles = "Account,Admin,Manager")]
-        [HttpGet("Get-All-Done-Transfer-Orders")]
-        public async Task<IActionResult> getAllDoneTransferOrders()
+        [HttpGet("Get-All-Done-Transfer-Orders/{Page}")]
+        public async Task<IActionResult> GetAllDoneTransferOrders(int Page)
         {
             try
             {
+                const int PageSize = 10;
+
                 CultureInfo culture = new CultureInfo("ar-SA")
                 {
                     DateTimeFormat = { Calendar = new GregorianCalendar() },
                     NumberFormat = { DigitSubstitution = DigitShapes.NativeNational }
                 };
-                var result = await _db.newOrders.Where(l => l.statuOrder == "تم التحويل").ToListAsync();
+
+                var result = await _db.newOrders
+                    .Where(l => l.statuOrder == "تم التحويل")
+                    .ToListAsync();
+
                 List<GetOrdersDTO> ordersDTOs = new List<GetOrdersDTO>();
-                if (result.Any())
+
+                foreach (var order in result)
                 {
-                    foreach (var order in result)
+                    var typeOrder = await _db.typeOrders
+                        .Where(l => l.newOrderId == order.Id)
+                        .FirstOrDefaultAsync();
+
+                    var value = await _db.values
+                        .Where(l => l.newOrderId == order.Id)
+                        .ToListAsync();
+
+                    var Response = await _functions.BrokerandUser(order.Accept!, order.AcceptAccount!);
+
+                    if (Response.Value.TryGetProperty("user", out JsonElement User) &&
+                        Response.Value.TryGetProperty("broker", out JsonElement Account))
                     {
-                        var typeOrder = await _db.typeOrders
-                            .Where(l => l.newOrderId == order.Id)
-                            .FirstOrDefaultAsync();
-                        var value = await _db.values.Where(l => l.newOrderId == order.Id).ToListAsync();
-                        var Response = await _functions.BrokerandUser(order.Accept!, order.AcceptAccount!);
-
-                        if (Response.Value.TryGetProperty("user", out JsonElement User) &&
-                            Response.Value.TryGetProperty("broker", out JsonElement Account))
+                        if (User.TryGetProperty("fullName", out JsonElement UserName) &&
+                            User.TryGetProperty("email", out JsonElement UserEmail) &&
+                            Account.TryGetProperty("fullName", out JsonElement AccountName) &&
+                            Account.TryGetProperty("email", out JsonElement AccountEmail))
                         {
-                            if (User.TryGetProperty("fullName", out JsonElement UserName) &&
-                                User.TryGetProperty("email", out JsonElement UserEmail) &&
-                                Account.TryGetProperty("fullName", out JsonElement AccountName) &&
-                                Account.TryGetProperty("email", out JsonElement AccountEmail))
-                                ordersDTOs.Add(new GetOrdersDTO
-                                {
-                                    Id = order.Id.ToString(),
-                                    statuOrder = order.statuOrder,
-                                    Location = order.Location,
-                                    typeOrder = typeOrder?.typeOrder,
-                                    Date = order.Date!.Value.ToString("dddd, dd MMMM yyyy", culture),
-                                    Email = UserEmail.GetString(),
-                                    fullName = UserName.GetString(),
-                                    AccountEmail = AccountEmail.GetString(),
-                                    AccountName = AccountName.GetString(),
-                                    BrokerID = order.Accept,
-                                    Value = value[0].Value,
-                                });
-                        }
-                    }
-                    return Ok(ordersDTOs);
-                }
-                return Ok(new string[] { });
-            }
-            catch (Exception)
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
-            }
-        }
-
-        [Authorize(Roles = "Account,Admin,Manager")]
-        [HttpGet("Get-All-Not-Done-Transfer-Orders")]
-        public async Task<IActionResult> getAllNotDoneTransferOrders()
-        {
-            try
-            {
-                var result = await _db.newOrders.Where(l => l.statuOrder == "لم يتم التحويل").ToListAsync();
-                CultureInfo culture = new CultureInfo("ar-SA")
-                {
-                    DateTimeFormat = { Calendar = new GregorianCalendar() },
-                    NumberFormat = { DigitSubstitution = DigitShapes.NativeNational }
-                };
-                List<GetOrdersDTO> ordersDTOs = new List<GetOrdersDTO>();
-                if (result.Any())
-                {
-
-                    foreach (var order in result)
-                    {
-                        var typeOrder = await _db.typeOrders
-                            .Where(l => l.newOrderId == order.Id)
-                            .FirstOrDefaultAsync();
-                        var Response = await _functions.SendAPI(order.UserId!);
-                        if (Response.HasValue && Response.Value.TryGetProperty("fullName", out JsonElement fullName) && Response.Value.TryGetProperty("phoneNumber", out JsonElement phoneNumber))
-                        {
-
                             ordersDTOs.Add(new GetOrdersDTO
                             {
                                 Id = order.Id.ToString(),
@@ -253,21 +237,110 @@ namespace User.Controllers
                                 Location = order.Location,
                                 typeOrder = typeOrder?.typeOrder,
                                 Date = order.Date!.Value.ToString("dddd, dd MMMM yyyy", culture),
-                                fullName = fullName.ToString(),
-                                phoneNumber = phoneNumber.ToString(),
+                                Email = UserEmail.GetString(),
+                                fullName = UserName.GetString(),
+                                AccountEmail = AccountEmail.GetString(),
+                                AccountName = AccountName.GetString(),
                                 BrokerID = order.Accept,
+                                Value = value.FirstOrDefault()?.Value ?? 0
                             });
                         }
                     }
-                    return Ok(ordersDTOs);
                 }
-                return Ok(new string[] { });
+
+                var totalCount = ordersDTOs.Count;
+                var totalPages = (int)Math.Ceiling((double)totalCount / PageSize);
+
+                var paginatedOrders = ordersDTOs
+                    .Skip((Page - 1) * PageSize)
+                    .Take(PageSize)
+                    .ToList();
+
+                return Ok(new
+                {
+                    TotalPages = totalPages,
+                    Page = Page,
+                    totalOrders = totalCount,
+                    data = paginatedOrders
+                });
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
+
+
+        [Authorize(Roles = "Account,Admin,Manager")]
+        [HttpGet("Get-All-Not-Done-Transfer-Orders/{Page}")]
+        public async Task<IActionResult> GetAllNotDoneTransferOrders(int Page = 1)
+        {
+            try
+            {
+                const int PageSize = 10;
+
+                var result = await _db.newOrders
+                    .Where(l => l.statuOrder == "لم يتم التحويل")
+                    .ToListAsync();
+
+                CultureInfo culture = new CultureInfo("ar-SA")
+                {
+                    DateTimeFormat = { Calendar = new GregorianCalendar() },
+                    NumberFormat = { DigitSubstitution = DigitShapes.NativeNational }
+                };
+
+                List<GetOrdersDTO> ordersDTOs = new List<GetOrdersDTO>();
+
+                foreach (var order in result)
+                {
+                    var typeOrder = await _db.typeOrders
+                        .Where(l => l.newOrderId == order.Id)
+                        .FirstOrDefaultAsync();
+
+                    var Response = await _functions.SendAPI(order.UserId!);
+
+                    if (Response.HasValue &&
+                        Response.Value.TryGetProperty("fullName", out JsonElement fullName) &&
+                        Response.Value.TryGetProperty("phoneNumber", out JsonElement phoneNumber))
+                    {
+                        ordersDTOs.Add(new GetOrdersDTO
+                        {
+                            Id = order.Id.ToString(),
+                            statuOrder = order.statuOrder,
+                            Location = order.Location,
+                            typeOrder = typeOrder?.typeOrder,
+                            Date = order.Date!.Value.ToString("dddd, dd MMMM yyyy", culture),
+                            fullName = fullName.GetString(),
+                            phoneNumber = phoneNumber.GetString(),
+                            BrokerID = order.Accept
+                        });
+                    }
+                }
+
+                var totalCount = ordersDTOs.Count;
+                var totalPages = (int)Math.Ceiling((double)totalCount / PageSize);
+
+                var paginatedOrders = ordersDTOs
+                    .Skip((Page - 1) * PageSize)
+                    .Take(PageSize)
+                    .ToList();
+
+                return Ok(new
+                {
+                    TotalPages = totalPages,
+                    Page = Page,
+                    totalOrders = totalCount,
+                    data = paginatedOrders
+                });
+            }
+            catch (Exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
+            }
+        }
+
 
         [Authorize(Roles = "CustomerService,Account,Admin,Manager")]
         [HttpPost("Get-All-Informatiom-From-Broker")]
@@ -288,34 +361,6 @@ namespace User.Controllers
             }
         }
 
-        //[Authorize(Roles = "Account,CustomerService,Admin,Manager")]
-        //[HttpPost("DownloadFiles-From-Account")]
-        //public async Task<IActionResult> downloadFiles(GetNewOrderID getNewOrderID)
-        //{
-        //    try
-        //    {
-        //        var file = await _db.notesCustomerServices.Where(l => l.newOrderId == getNewOrderID.newOrderId).ToListAsync();
-        //        var updatedFiles = file
-        //            .Select((f) => new
-        //            {
-        //                fileName = f.fileName,
-        //                fileData = f.fileData,
-        //                newOrder = f.newOrder,
-        //                ContentType = f.ContentType,
-        //                newOrderId = f.newOrderId
-        //            }).ToList();
-        //        if (updatedFiles != null)
-        //        {
-        //            Response.Headers.Add("Content-Disposition", $"attachment; filename*=UTF-8''{Uri.EscapeDataString(updatedFiles[0].fileName)}");
-        //            return File(updatedFiles[0].fileData!, updatedFiles[0].ContentType!, updatedFiles[0].fileName);
-        //        }
-        //        return Ok();
-        //    }
-        //    catch (Exception)
-        //    {
-        //        return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
-        //    }
-        //}
 
         [Authorize(Roles = "Account,CustomerService,Admin,Manager")]
         [HttpPost("Get-Name-File-From-CustomerService")]

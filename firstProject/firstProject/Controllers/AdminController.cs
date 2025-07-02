@@ -27,39 +27,49 @@ namespace firstProject.Controllers
 
         //جلب جميع المستخدمين
         [Authorize(Roles = "Admin,Manager")]
-        [HttpGet("Get-User")]
-        public async Task<IActionResult> getAllUsers()
+        [HttpGet("Get-User/{Page}")]
+        public async Task<IActionResult> GetAllUsers(int Page)
         {
             try
             {
+                const int pageSize = 8;
                 var allUsers = await _userManager.Users.ToListAsync();
                 List<UserDTO> users = new List<UserDTO>();
-                if (allUsers is not null)
+
+                foreach (var user in allUsers)
                 {
-                    for (int i = 0; i < allUsers.Count; i++)
+                    var roles = await _userManager.GetRolesAsync(user);
+                    var role = string.Join(", ", roles);
+
+                    if (role == "User" || role == "Company")
                     {
-                        var roles = await _userManager.GetRolesAsync(allUsers[i]);
-                        var role = string.Join(", ", roles);
-                        if (role != null)
+                        users.Add(new UserDTO
                         {
-                            if (role == "User" || role == "Company")
-                            {
-                                users.Add(new UserDTO
-                                {
-                                    Id = allUsers[i].Id,
-                                    fullName = allUsers[i].fullName,
-                                    Identity = allUsers[i].Identity,
-                                    phoneNumber = allUsers[i].PhoneNumber,
-                                    Email = allUsers[i].Email,
-                                    Role = role,
-                                    IsBlocked = allUsers[i].isBlocked
-                                });
-                            }
-                        }
+                            Id = user.Id,
+                            fullName = user.fullName,
+                            Identity = user.Identity,
+                            phoneNumber = user.PhoneNumber,
+                            Email = user.Email,
+                            Role = role,
+                            IsBlocked = user.isBlocked
+                        });
                     }
-                    return Ok(users);
                 }
-                return Ok(new string[] { });
+
+                var totalUser = users.Count;
+                var totalPages = (int)Math.Ceiling((double)totalUser / pageSize);
+                var paginatedUsers = users
+                    .Skip((Page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToList();
+
+                return Ok(new
+                {
+                    TotalPages = totalPages,
+                    Page = Page,
+                    data = paginatedUsers,
+                    totalUser = totalUser
+                });
             }
             catch (Exception)
             {
@@ -69,40 +79,49 @@ namespace firstProject.Controllers
 
         //جلب جميع المخلصين
         [Authorize(Roles = "Admin,Manager")]
-        [HttpGet("Get-Broker")]
-        public async Task<IActionResult> getAllBroker()
+        [HttpGet("Get-Broker/{Page}")]
+        public async Task<IActionResult> GetAllBroker(int Page)
         {
             try
             {
+                const int PageSize = 8;
                 var allUsers = await _userManager.Users.ToListAsync();
-                List<UserDTO> users = new List<UserDTO>();
-                if (allUsers is not null)
-                {
-                    for (int i = 0; i < allUsers.Count; i++)
-                    {
-                        var roles = await _userManager.GetRolesAsync(allUsers[i]);
-                        var role = string.Join(", ", roles);
+                List<UserDTO> brokers = new List<UserDTO>();
 
-                        if (role != null)
+                foreach (var user in allUsers)
+                {
+                    var roles = await _userManager.GetRolesAsync(user);
+                    var role = string.Join(", ", roles);
+
+                    if (role == "Broker")
+                    {
+                        brokers.Add(new UserDTO
                         {
-                            if (role == "Broker")
-                            {
-                                users.Add(new UserDTO
-                                {
-                                    Id = allUsers[i].Id,
-                                    fullName = allUsers[i].fullName,
-                                    Identity = allUsers[i].Identity,
-                                    phoneNumber = allUsers[i].PhoneNumber,
-                                    Email = allUsers[i].Email,
-                                    Role = role,
-                                    IsBlocked = allUsers[i].isBlocked
-                                });
-                            }
-                        }
+                            Id = user.Id,
+                            fullName = user.fullName,
+                            Identity = user.Identity,
+                            phoneNumber = user.PhoneNumber,
+                            Email = user.Email,
+                            Role = role,
+                            IsBlocked = user.isBlocked
+                        });
                     }
-                    return Ok(users);
                 }
-                return Ok(new string[] { });
+
+                var totalCount = brokers.Count;
+                var totalPages = (int)Math.Ceiling((double)totalCount / PageSize);
+                var paginatedBrokers = brokers
+                    .Skip((Page - 1) * PageSize)
+                    .Take(PageSize)
+                    .ToList();
+
+                return Ok(new
+                {
+                    TotalPages = totalPages,
+                    Page = Page,
+                    totalUser = totalCount,
+                    data = paginatedBrokers
+                });
             }
             catch (Exception)
             {
@@ -110,42 +129,52 @@ namespace firstProject.Controllers
             }
         }
 
+
         //جلب جميع خدمة العملاء
         [Authorize(Roles = "Admin,Manager")]
-        [HttpGet("Get-CustomerService")]
-        public async Task<IActionResult> getAllCustomerService()
+        [HttpGet("Get-CustomerService/{Page}")]
+        public async Task<IActionResult> GetAllCustomerService(int Page)
         {
             try
             {
+                const int PageSize = 8;
                 var allUsers = await _userManager.Users.ToListAsync();
-                List<UserDTO> users = new List<UserDTO>();
-                if (allUsers is not null)
-                {
-                    for (int i = 0; i < allUsers.Count; i++)
-                    {
-                        var roles = await _userManager.GetRolesAsync(allUsers[i]);
-                        var role = string.Join(", ", roles);
+                List<UserDTO> customerServices = new List<UserDTO>();
 
-                        if (role != null)
+                foreach (var user in allUsers)
+                {
+                    var roles = await _userManager.GetRolesAsync(user);
+                    var role = string.Join(", ", roles);
+
+                    if (role == "CustomerService")
+                    {
+                        customerServices.Add(new UserDTO
                         {
-                            if (role == "CustomerService")
-                            {
-                                users.Add(new UserDTO
-                                {
-                                    Id = allUsers[i].Id,
-                                    fullName = allUsers[i].fullName,
-                                    Identity = allUsers[i].Identity,
-                                    phoneNumber = allUsers[i].PhoneNumber,
-                                    Email = allUsers[i].Email,
-                                    Role = role,
-                                    IsBlocked = allUsers[i].isBlocked
-                                });
-                            }
-                        }
+                            Id = user.Id,
+                            fullName = user.fullName,
+                            Identity = user.Identity,
+                            phoneNumber = user.PhoneNumber,
+                            Email = user.Email,
+                            Role = role,
+                            IsBlocked = user.isBlocked
+                        });
                     }
-                    return Ok(users);
                 }
-                return Ok(new string[] { });
+
+                var totalCount = customerServices.Count;
+                var totalPages = (int)Math.Ceiling((double)totalCount / PageSize);
+                var paginatedUsers = customerServices
+                    .Skip((Page - 1) * PageSize)
+                    .Take(PageSize)
+                    .ToList();
+
+                return Ok(new
+                {
+                    TotalPages = totalPages,
+                    Page = Page,
+                    totalUser = totalCount,
+                    data = paginatedUsers
+                });
             }
             catch (Exception)
             {
@@ -155,40 +184,49 @@ namespace firstProject.Controllers
 
         //جلب جميع المحاسبين
         [Authorize(Roles = "Admin,Manager")]
-        [HttpGet("Get-Account")]
-        public async Task<IActionResult> getAllAccount()
+        [HttpGet("Get-Account/{Page}")]
+        public async Task<IActionResult> GetAllAccount(int Page)
         {
             try
             {
+                const int PageSize = 8;
                 var allUsers = await _userManager.Users.ToListAsync();
-                List<UserDTO> users = new List<UserDTO>();
-                if (allUsers is not null)
-                {
-                    for (int i = 0; i < allUsers.Count; i++)
-                    {
-                        var roles = await _userManager.GetRolesAsync(allUsers[i]);
-                        var role = string.Join(", ", roles);
+                List<UserDTO> accounts = new List<UserDTO>();
 
-                        if (role != null)
+                foreach (var user in allUsers)
+                {
+                    var roles = await _userManager.GetRolesAsync(user);
+                    var role = string.Join(", ", roles);
+
+                    if (role == "Account")
+                    {
+                        accounts.Add(new UserDTO
                         {
-                            if (role == "Account")
-                            {
-                                users.Add(new UserDTO
-                                {
-                                    Id = allUsers[i].Id,
-                                    fullName = allUsers[i].fullName,
-                                    Identity = allUsers[i].Identity,
-                                    phoneNumber = allUsers[i].PhoneNumber,
-                                    Email = allUsers[i].Email,
-                                    Role = role,
-                                    IsBlocked = allUsers[i].isBlocked
-                                });
-                            }
-                        }
+                            Id = user.Id,
+                            fullName = user.fullName,
+                            Identity = user.Identity,
+                            phoneNumber = user.PhoneNumber,
+                            Email = user.Email,
+                            Role = role,
+                            IsBlocked = user.isBlocked
+                        });
                     }
-                    return Ok(users);
                 }
-                return Ok(new string[] { });
+
+                var totalCount = accounts.Count;
+                var totalPages = (int)Math.Ceiling((double)totalCount / PageSize);
+                var paginatedAccounts = accounts
+                    .Skip((Page - 1) * PageSize)
+                    .Take(PageSize)
+                    .ToList();
+
+                return Ok(new
+                {
+                    TotalPages = totalPages,
+                    Page = Page,
+                    totalUser = totalCount,
+                    data = paginatedAccounts
+                });
             }
             catch (Exception)
             {
@@ -198,40 +236,49 @@ namespace firstProject.Controllers
 
         //جلب جميع المديرين
         [Authorize(Roles = "Admin,Manager")]
-        [HttpGet("Get-Manager")]
-        public async Task<IActionResult> getAllManager()
+        [HttpGet("Get-Manager/{Page}")]
+        public async Task<IActionResult> GetAllManager(int Page)
         {
             try
             {
+                const int PageSize = 8;
                 var allUsers = await _userManager.Users.ToListAsync();
-                List<UserDTO> users = new List<UserDTO>();
-                if (allUsers is not null)
-                {
-                    for (int i = 0; i < allUsers.Count; i++)
-                    {
-                        var roles = await _userManager.GetRolesAsync(allUsers[i]);
-                        var role = string.Join(", ", roles);
+                List<UserDTO> managers = new List<UserDTO>();
 
-                        if (role != null)
+                foreach (var user in allUsers)
+                {
+                    var roles = await _userManager.GetRolesAsync(user);
+                    var role = string.Join(", ", roles);
+
+                    if (role == "Manager")
+                    {
+                        managers.Add(new UserDTO
                         {
-                            if (role == "Manager")
-                            {
-                                users.Add(new UserDTO
-                                {
-                                    Id = allUsers[i].Id,
-                                    fullName = allUsers[i].fullName,
-                                    Identity = allUsers[i].Identity,
-                                    phoneNumber = allUsers[i].PhoneNumber,
-                                    Email = allUsers[i].Email,
-                                    Role = role,
-                                    IsBlocked = allUsers[i].isBlocked
-                                });
-                            }
-                        }
+                            Id = user.Id,
+                            fullName = user.fullName,
+                            Identity = user.Identity,
+                            phoneNumber = user.PhoneNumber,
+                            Email = user.Email,
+                            Role = role,
+                            IsBlocked = user.isBlocked
+                        });
                     }
-                    return Ok(users);
                 }
-                return Ok(new string[] { });
+
+                var totalCount = managers.Count;
+                var totalPages = (int)Math.Ceiling((double)totalCount / PageSize);
+                var paginatedManagers = managers
+                    .Skip((Page - 1) * PageSize)
+                    .Take(PageSize)
+                    .ToList();
+
+                return Ok(new
+                {
+                    TotalPages = totalPages,
+                    Page = Page,
+                    totalUser = totalCount,
+                    data = paginatedManagers
+                });
             }
             catch (Exception)
             {
@@ -304,42 +351,58 @@ namespace firstProject.Controllers
 
         //قائمة المحظورين
         [Authorize(Roles = "Admin,Manager")]
-        [HttpGet("Black-List")]
-        public async Task<IActionResult> balckList()
+        [HttpGet("Black-List/{Page}")]
+        public async Task<IActionResult> BlackList(int Page)
         {
             try
             {
-                var blackList = await _userManager.Users.Where(l => l.isBlocked == true).ToListAsync();
+                const int PageSize = 8;
+
+                var blackList = await _userManager.Users
+                    .Where(u => u.isBlocked == true)
+                    .ToListAsync();
+
                 List<UserDTO> users = new List<UserDTO>();
-                if (blackList is not null)
+
+                foreach (var user in blackList)
                 {
-                    for (int i = 0; i < blackList.Count; i++)
+                    var roles = await _userManager.GetRolesAsync(user);
+                    var role = string.Join(", ", roles);
+
+                    users.Add(new UserDTO
                     {
-                        var roles = await _userManager.GetRolesAsync(blackList[i]);
-                        var role = string.Join(", ", roles);
-                        if (role != null)
-                        {
-                            users.Add(new UserDTO
-                            {
-                                Id = blackList[i].Id,
-                                fullName = blackList[i].fullName,
-                                Identity = blackList[i].Identity,
-                                phoneNumber = blackList[i].PhoneNumber,
-                                Email = blackList[i].Email,
-                                Role = role,
-                                IsBlocked = blackList[i].isBlocked
-                            });
-                        }
-                    }
-                    return Ok(users);
+                        Id = user.Id,
+                        fullName = user.fullName,
+                        Identity = user.Identity,
+                        phoneNumber = user.PhoneNumber,
+                        Email = user.Email,
+                        Role = role,
+                        IsBlocked = user.isBlocked
+                    });
                 }
-                return Ok(new string[] { });
+
+                var totalCount = users.Count;
+                var totalPages = (int)Math.Ceiling((double)totalCount / PageSize);
+                var paginatedUsers = users
+                    .Skip((Page - 1) * PageSize)
+                    .Take(PageSize)
+                    .ToList();
+
+                return Ok(new
+                {
+                    TotalPages = totalPages,
+                    Page = Page,
+                    totalUser = totalCount,
+                    data = paginatedUsers
+                });
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
+
 
         //تغيير صلاحية الطلب 
         [Authorize(Roles = ("Admin"))]
@@ -422,68 +485,63 @@ namespace firstProject.Controllers
 
         // جلب جميع المستخدمين للصلاحيات
         [Authorize(Roles = "Admin")]
-        [HttpGet("Get-All-Peaple-Admin")]
-        public async Task<IActionResult> getAllPeapleAdmin()
+        [HttpGet("Get-All-Peaple-Admin/{Page}")]
+        public async Task<IActionResult> GetAllPeapleAdmin(int Page)
         {
             try
             {
+                const int PageSize = 8;
                 var allUsers = await _userManager.Users.ToListAsync();
                 List<UserDTO> users = new List<UserDTO>();
-                if (allUsers is not null)
+
+                foreach (var user in allUsers)
                 {
-                    for (int i = 0; i < allUsers.Count; i++)
+                    var roles = await _userManager.GetRolesAsync(user);
+                    var role = string.Join(", ", roles);
+
+                    string arabicRole = role switch
                     {
-                        var roles = await _userManager.GetRolesAsync(allUsers[i]);
-                        var role = string.Join(", ", roles);
-                        if (role.Equals("Admin"))
-                        {
-                            role = "مسؤول";
-                        }
-                        else if (role.Equals("Manager"))
-                        {
-                            role = "مدير";
-                        }
-                        else if (role.Equals("User"))
-                        {
-                            role = "عميل";
-                        }
-                        else if (role.Equals("Company"))
-                        {
-                            role = "شركة";
-                        }
-                        else if (role.Equals("CustomerService"))
-                        {
-                            role = "خدمة العملاء";
-                        }
-                        else if (role.Equals("Broker"))
-                        {
-                            role = "مخلص";
-                        }
-                        else if (role.Equals("Account"))
-                        {
-                            role = "محاسب";
-                        }
-                        if (role != null)
-                        {
-                            users.Add(new UserDTO
-                            {
-                                Id = allUsers[i].Id,
-                                fullName = allUsers[i].fullName,
-                                Identity = allUsers[i].Identity,
-                                phoneNumber = allUsers[i].PhoneNumber,
-                                Email = allUsers[i].Email,
-                                Role = role,
-                                IsBlocked = allUsers[i].isBlocked
-                            });
-                        }
-                    }
-                    return Ok(users);
+                        "Admin" => "مسؤول",
+                        "Manager" => "مدير",
+                        "User" => "عميل",
+                        "Company" => "شركة",
+                        "CustomerService" => "خدمة العملاء",
+                        "Broker" => "مخلص",
+                        "Account" => "محاسب",
+                        _ => role
+                    };
+
+                    users.Add(new UserDTO
+                    {
+                        Id = user.Id,
+                        fullName = user.fullName,
+                        Identity = user.Identity,
+                        phoneNumber = user.PhoneNumber,
+                        Email = user.Email,
+                        Role = arabicRole,
+                        IsBlocked = user.isBlocked
+                    });
                 }
-                return Ok(new string[] { });
+
+                var totalCount = users.Count;
+                var totalPages = (int)Math.Ceiling((double)totalCount / PageSize);
+                var paginatedUsers = users
+                    .Skip((Page - 1) * PageSize)
+                    .Take(PageSize)
+                    .ToList();
+
+                return Ok(new
+                {
+                    TotalPages = totalPages,
+                    Page = Page,
+                    totalUser = totalCount,
+                    data = paginatedUsers
+                });
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
 
@@ -685,23 +743,32 @@ namespace firstProject.Controllers
         }
 
         [Authorize(Roles = "Admin,Manager")]
-        [HttpGet("Get-Active-Users")]
-        public async Task<IActionResult> getActiveUsers()
+        [HttpGet("Get-Active-Users/{Page}")]
+        public async Task<IActionResult> GetActiveUsers(int Page)
         {
             try
             {
+                const int PageSize = 8;
+
                 CultureInfo culture = new CultureInfo("ar-SA")
                 {
                     DateTimeFormat = { Calendar = new GregorianCalendar() },
                     NumberFormat = { DigitSubstitution = DigitShapes.NativeNational }
                 };
 
-                var Active = await _userManager.Users.Where(l => l.isActive == true && l.lastLogin!.Value.AddMonths(1) >= DateTime.UtcNow).ToListAsync();
+                var activeUsers = await _userManager.Users
+                    .Where(u => u.isActive == true && u.lastLogin!.Value.AddMonths(1) >= DateTime.UtcNow)
+                    .ToListAsync();
+
                 List<ActiveUsersDTO> users = new List<ActiveUsersDTO>();
-                foreach (var user in Active)
+
+                foreach (var user in activeUsers)
                 {
-                    var Response = await new SendApis(httpClient1, _httpContextAccessor).SendAPI(user.Id);
-                    if (Response.HasValue && Response.Value.TryGetProperty("totalOrders", out JsonElement totalOrders) && Response.Value.TryGetProperty("successOrders", out JsonElement successOrders))
+                    var response = await new SendApis(httpClient1, _httpContextAccessor).SendAPI(user.Id);
+
+                    if (response.HasValue &&
+                        response.Value.TryGetProperty("totalOrders", out JsonElement totalOrders) &&
+                        response.Value.TryGetProperty("successOrders", out JsonElement successOrders))
                     {
                         users.Add(new ActiveUsersDTO
                         {
@@ -713,32 +780,58 @@ namespace firstProject.Controllers
                         });
                     }
                 }
-                return Ok(users);
+
+                var totalCount = users.Count;
+                var totalPages = (int)Math.Ceiling((double)totalCount / PageSize);
+
+                var paginatedUsers = users
+                    .Skip((Page - 1) * PageSize)
+                    .Take(PageSize)
+                    .ToList();
+
+                return Ok(new
+                {
+                    TotalPages = totalPages,
+                    Page = Page,
+                    totalUser = totalCount,
+                    data = paginatedUsers
+                });
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
+
 
         [Authorize(Roles = "Admin,Manager")]
-        [HttpGet("Get-Not-Active-Users")]
-        public async Task<IActionResult> getNotActiveUsers()
+        [HttpGet("Get-Not-Active-Users/{Page}")]
+        public async Task<IActionResult> GetNotActiveUsers(int Page)
         {
             try
             {
+                const int PageSize = 8;
+
                 CultureInfo culture = new CultureInfo("ar-SA")
                 {
                     DateTimeFormat = { Calendar = new GregorianCalendar() },
                     NumberFormat = { DigitSubstitution = DigitShapes.NativeNational }
                 };
 
-                var Active = await _userManager.Users.Where(l => l.isActive == true && l.lastLogin!.Value.AddMonths(1) <= DateTime.UtcNow).ToListAsync();
+                var notActiveUsers = await _userManager.Users
+                    .Where(u => u.isActive == true && u.lastLogin!.Value.AddMonths(1) <= DateTime.UtcNow)
+                    .ToListAsync();
+
                 List<ActiveUsersDTO> users = new List<ActiveUsersDTO>();
-                foreach (var user in Active)
+
+                foreach (var user in notActiveUsers)
                 {
-                    var Response = await new SendApis(httpClient1, _httpContextAccessor).SendAPI(user.Id);
-                    if (Response.HasValue && Response.Value.TryGetProperty("totalOrders", out JsonElement totalOrders) && Response.Value.TryGetProperty("successOrders", out JsonElement successOrders))
+                    var response = await new SendApis(httpClient1, _httpContextAccessor).SendAPI(user.Id);
+
+                    if (response.HasValue &&
+                        response.Value.TryGetProperty("totalOrders", out JsonElement totalOrders) &&
+                        response.Value.TryGetProperty("successOrders", out JsonElement successOrders))
                     {
                         users.Add(new ActiveUsersDTO
                         {
@@ -746,16 +839,33 @@ namespace firstProject.Controllers
                             Email = user.Email,
                             lastlogin = user.lastLogin!.Value.ToString("dddd, dd MMMM yyyy", culture),
                             totalOrders = totalOrders.GetInt32(),
-                            SuccessOrders = successOrders.GetInt32(),
+                            SuccessOrders = successOrders.GetInt32()
                         });
                     }
                 }
-                return Ok(users);
+
+                var totalCount = users.Count;
+                var totalPages = (int)Math.Ceiling((double)totalCount / PageSize);
+
+                var paginatedUsers = users
+                    .Skip((Page - 1) * PageSize)
+                    .Take(PageSize)
+                    .ToList();
+
+                return Ok(new
+                {
+                    TotalPages = totalPages,
+                    Page = Page,
+                    totalUser = totalCount,
+                    data = paginatedUsers
+                });
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
+
     }
 }

@@ -1,11 +1,11 @@
-﻿using Hangfire;
+﻿using System.Globalization;
+using System.Security.Claims;
+using System.Text.Json;
+using Hangfire;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Globalization;
-using System.Security.Claims;
-using System.Text.Json;
 using User.ApplicationDbContext;
 using User.DTO;
 using User.Model;
@@ -31,38 +31,60 @@ namespace User.Controllers
 
         //جميع الطلبات المتاحة اللي هي قيد الإنتظار
         [Authorize(Roles = "Broker,Admin,Manager")]
-        [HttpGet("Get-All-Orders")]
-        public async Task<IActionResult> GetOrders()
+        [HttpGet("Get-All-Orders/{Page}")]
+        public async Task<IActionResult> GetOrders(int Page)
         {
             try
             {
+                const int PageSize = 10;
+
                 CultureInfo culture = new CultureInfo("ar-SA")
                 {
                     DateTimeFormat = { Calendar = new GregorianCalendar() },
                     NumberFormat = { DigitSubstitution = DigitShapes.NativeNational }
                 };
+
                 var filteredOrders = await _db.newOrders
                     .Where(order => order.Date.HasValue &&
                                     order.Date.Value.AddDays(7) > DateTime.Now &&
                                     order.statuOrder == "قيد الإنتظار")
+                    .OrderByDescending(order => order.Date)
+                    .ToListAsync();
+
+                List<GetOrdersDTO> ordersList = filteredOrders
                     .Select(order => new GetOrdersDTO
                     {
                         Id = order.Id.ToString(),
                         Location = order.Location,
                         Date = order.Date!.Value.ToString("dddd, dd MMMM yyyy", culture),
                     })
-                    .ToListAsync();
+                    .ToList();
 
-                if (!filteredOrders.Any())
+                if (!ordersList.Any())
                 {
                     return NotFound(new ApiResponse { Message = "لا توجد طلبات قيد الإنتظار" });
                 }
 
-                return Ok(filteredOrders);
+                var totalCount = ordersList.Count;
+                var totalPages = (int)Math.Ceiling((double)totalCount / PageSize);
+
+                var paginatedOrders = ordersList
+                    .Skip((Page - 1) * PageSize)
+                    .Take(PageSize)
+                    .ToList();
+
+                return Ok(new
+                {
+                    TotalPages = totalPages,
+                    Page = Page,
+                    totalOrders = totalCount,
+                    data = paginatedOrders
+                });
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
 
@@ -91,7 +113,7 @@ namespace User.Controllers
 
                 var fileNames = await _db.uploadFiles
                                         .Where(f => f.newOrderId == order.Id)
-                                        .Select(f =>new { f.fileName , f.fileUrl })
+                                        .Select(f => new { f.fileName, f.fileUrl })
                                         .ToArrayAsync();
                 List<GetDetailsOfOrders> details = new List<GetDetailsOfOrders>();
 
@@ -118,7 +140,7 @@ namespace User.Controllers
                     City = order.City,
                     Town = order.Town,
                     zipCode = order.zipCode,
-                    fileUrl = fileNames.Select(g => g.fileUrl).ToArray()! 
+                    fileUrl = fileNames.Select(g => g.fileUrl).ToArray()!
                 });
 
                 for (int i = 1; i < detailsOfOrder.Count; i++)
@@ -218,19 +240,34 @@ namespace User.Controllers
 
         // جميع القيم بتاعت الطلب
         [Authorize(Roles = "Broker,User,Admin,Manager,Company")]
-        [HttpGet("Get-all-Values/{OrderId}")]
-        public async Task<IActionResult> getAllValues(string OrderId)
+        [HttpGet("Get-all-Values/{OrderId}/{Page}")]
+        public async Task<IActionResult> getAllValues(string OrderId, int Page)
         {
             try
             {
+                const int PageSize = 8;
+
                 int NewOrderId = int.Parse(_protector.Unprotect(OrderId.ToString()));
-                if (NewOrderId == 0) { return BadRequest(new ApiResponse { Message = "لم يتم العثور على معرف الطلب" }); }
-                var result = await _db.values.Where(l => l.newOrderId == NewOrderId).ToListAsync();
+                if (NewOrderId == 0)
+                {
+                    return BadRequest(new ApiResponse { Message = "لم يتم العثور على معرف الطلب" });
+                }
+
+                var result = await _db.values
+                    .Where(l => l.newOrderId == NewOrderId)
+                    .ToListAsync();
+
                 List<GetValue> values = new List<GetValue>();
 
                 if (!result.Any())
                 {
-                    return Ok(values);
+                    return Ok(new
+                    {
+                        TotalPages = 0,
+                        Page = Page,
+                        totalValues = 0,
+                        data = values
+                    });
                 }
 
                 foreach (var order in result)
@@ -247,21 +284,39 @@ namespace User.Controllers
                     });
                 }
 
-                return Ok(values);
+                var totalCount = values.Count;
+                var totalPages = (int)Math.Ceiling((double)totalCount / PageSize);
+
+                var paginatedValues = values
+                    .Skip((Page - 1) * PageSize)
+                    .Take(PageSize)
+                    .ToList();
+
+                return Ok(new
+                {
+                    TotalPages = totalPages,
+                    Page = Page,
+                    totalValues = totalCount,
+                    data = paginatedValues
+                });
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
 
+
         // الطلبات القائمة 
         [Authorize(Roles = "Broker,Admin,Manager")]
-        [HttpGet("Current-Offers")]
-        public async Task<IActionResult> currentOffers()
+        [HttpGet("Current-Offers/{Page}")]
+        public async Task<IActionResult> CurrentOffers(int Page)
         {
             var ID = User.FindFirst("ID")?.Value;
             var Role = User.FindFirstValue("Role");
+            const int PageSize = 10;
+
             try
             {
                 CultureInfo culture = new CultureInfo("ar-SA")
@@ -274,68 +329,63 @@ namespace User.Controllers
                 {
                     return BadRequest(new ApiResponse { Message = "لم يتم العثور على معرف المستخدم في بيانات الاعتماد" });
                 }
+
+                List<GetOrdersDTO> getOrders = new();
+
                 if (Role == "Broker")
                 {
                     var result = await _db.values
-                    .Where(v => v.BrokerID == ID)
-                    .GroupBy(v => v.newOrderId)
-                    .Select(g => g.First().newOrderId) // استخراج newOrderId فقط
-                    .Join(
-                        _db.newOrders,
-                        newOrderId => newOrderId,
-                        order => order.Id,
-                        (newOrderId, order) => new
-                        {
-                            // استرجاع الحقول المطلوبة فقط
-                            Date = order.Date,
-                            Location = order.Location,
-                            statuOrder = order.statuOrder,
-                            Id = order.Id
-                        })
-                    .Where(order => order.statuOrder == "قيد الإنتظار")
-                    .Select(order => new GetOrdersDTO // تحويل النتائج إلى GetOrdersDTO
+                        .Where(v => v.BrokerID == ID)
+                        .GroupBy(v => v.newOrderId)
+                        .Select(g => g.First().newOrderId)
+                        .Join(_db.newOrders,
+                            newOrderId => newOrderId,
+                            order => order.Id,
+                            (newOrderId, order) => new
+                            {
+                                order.Date,
+                                order.Location,
+                                order.statuOrder,
+                                order.Id
+                            })
+                        .Where(order => order.statuOrder == "قيد الإنتظار")
+                        .OrderByDescending(order => order.Date)
+                        .ToListAsync();
+
+                    getOrders = result.Select(order => new GetOrdersDTO
                     {
                         Date = order.Date!.Value.ToString("dddd, dd MMMM yyyy", culture),
                         Location = order.Location,
                         statuOrder = "في إنتظار العميل لقبول عرضك",
                         Id = order.Id.ToString()
-                    })
-                    .ToListAsync();
-
-
-                    return Ok(result);
+                    }).ToList();
                 }
-                else if (Role == "Admin")
+                else if (Role == "Admin" || Role == "Manager")
                 {
-
                     var result = await _db.values
-                             .GroupBy(v => v.newOrderId)
-                             .Select(g => new { newOrderId = g.First().newOrderId, BrokerID = g.First().BrokerID }) // تعريف الحقول بشكل صريح
-                             .Join(
-                                 _db.newOrders,
-                                 grouped => grouped.newOrderId, // استخراج المفتاح الصحيح للمقارنة
-                                 order => order.Id,
-                                 (grouped, order) => new
-                                 {
-                                     // استرجاع الحقول المطلوبة فقط
-                                     Date = order.Date,
-                                     statuOrder = order.statuOrder,
-                                     Location = order.Location,
-                                     Id = order.Id,
-                                     BrokerID = grouped.BrokerID // التأكد من استخدام الحقل الصحيح
-                                 })
-                             .Where(order => order.statuOrder == "قيد الإنتظار")
-                             .ToListAsync();
-                    List<GetOrdersDTO> getOrders = new List<GetOrdersDTO>();
-
-                    if (!result.Any())
-
-                    { return Ok(getOrders); }
+                        .GroupBy(v => v.newOrderId)
+                        .Select(g => new { newOrderId = g.First().newOrderId, BrokerID = g.First().BrokerID })
+                        .Join(_db.newOrders,
+                            grouped => grouped.newOrderId,
+                            order => order.Id,
+                            (grouped, order) => new
+                            {
+                                order.Date,
+                                order.statuOrder,
+                                order.Location,
+                                order.Id,
+                                grouped.BrokerID
+                            })
+                        .Where(order => order.statuOrder == "قيد الإنتظار")
+                        .OrderByDescending(order => order.Date)
+                        .ToListAsync();
 
                     foreach (var order in result)
                     {
                         var ResponseUser = await _functions.SendAPI(order.BrokerID!);
-                        if (ResponseUser.HasValue && ResponseUser.Value.TryGetProperty("fullName", out JsonElement fullName) && ResponseUser.Value.TryGetProperty("email", out JsonElement Email))
+                        if (ResponseUser.HasValue &&
+                            ResponseUser.Value.TryGetProperty("fullName", out JsonElement fullName) &&
+                            ResponseUser.Value.TryGetProperty("email", out JsonElement Email))
                         {
                             getOrders.Add(new GetOrdersDTO
                             {
@@ -347,141 +397,162 @@ namespace User.Controllers
                                 BrokerEmail = Email.ToString(),
                             });
                         }
-                        return Ok(getOrders);
                     }
                 }
-                return Ok(new string[] { });
+
+                // Pagination
+                var totalCount = getOrders.Count;
+                var totalPages = (int)Math.Ceiling((double)totalCount / PageSize);
+
+                var paginatedOrders = getOrders
+                    .Skip((Page - 1) * PageSize)
+                    .Take(PageSize)
+                    .ToList();
+
+                return Ok(new
+                {
+                    TotalPages = totalPages,
+                    Page = Page,
+                    totalOrders = totalCount,
+                    data = paginatedOrders
+                });
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
-
         }
+
 
 
         // الطلبات الجارية
         [Authorize(Roles = "Broker,User,Admin,Manager,Company")]
-        [HttpGet("Order-Requests")]
-        public async Task<IActionResult> orderRequests()
+        [HttpGet("Order-Requests/{Page}")]
+        public async Task<IActionResult> OrderRequests(int Page)
         {
-
             try
             {
+                const int PageSize = 10;
                 var ID = User.FindFirst("ID")?.Value;
-                if (string.IsNullOrEmpty(ID))
-                {
-                    return BadRequest(new ApiResponse { Message = "لم يتم العثور على معرف المستخدم في بيانات الاعتماد" });
-                }
                 var Role = User.FindFirst("Role")?.Value;
+
+                if (string.IsNullOrEmpty(ID))
+                    return BadRequest(new ApiResponse { Message = "لم يتم العثور على معرف المستخدم في بيانات الاعتماد" });
+
                 if (string.IsNullOrEmpty(Role))
-                {
-                    return BadRequest(new ApiResponse { Message = "لا توجد ادوار لهذا المستخدم" });
-                }
+                    return BadRequest(new ApiResponse { Message = "لا توجد أدوار لهذا المستخدم" });
+
                 CultureInfo culture = new CultureInfo("ar-SA")
                 {
                     DateTimeFormat = { Calendar = new GregorianCalendar() },
                     NumberFormat = { DigitSubstitution = DigitShapes.NativeNational }
                 };
 
+                List<GetOrdersDTO> ordersDTOs = new();
+
                 if (Role == "Broker")
                 {
-                    var resultBroker = await _db.newOrders.Where(l => l.Accept == ID).Where(l => l.statuOrder == "تحت الإجراء").ToListAsync();
-                    List<GetOrdersDTO> ordersDTOs = new List<GetOrdersDTO>();
-                    if (resultBroker.Any())
+                    var result = await _db.newOrders
+                        .Where(l => l.Accept == ID && l.statuOrder == "تحت الإجراء")
+                        .OrderByDescending(l => l.Date)
+                        .ToListAsync();
+
+                    foreach (var order in result)
                     {
+                        var typeOrder = await _db.typeOrders.FirstOrDefaultAsync(l => l.newOrderId == order.Id);
 
-
-                        foreach (var order in resultBroker)
+                        ordersDTOs.Add(new GetOrdersDTO
                         {
-                            var typeOrder = await _db.typeOrders
-                                .Where(l => l.newOrderId == order.Id)
-                                .FirstOrDefaultAsync();
-
-                            ordersDTOs.Add(new GetOrdersDTO
-                            {
-                                Id = order.Id.ToString(),
-                                statuOrder = order.statuOrder,
-                                Location = order.Location,
-                                typeOrder = typeOrder?.typeOrder,
-                                Date = order.Date!.Value.ToString("dddd, dd MMMM yyyy", culture),
-                                Notes = order.Notes,
-                            });
-                        }
-                        return Ok(ordersDTOs);
+                            Id = order.Id.ToString(),
+                            statuOrder = order.statuOrder,
+                            Location = order.Location,
+                            typeOrder = typeOrder?.typeOrder,
+                            Date = order.Date!.Value.ToString("dddd, dd MMMM yyyy", culture),
+                            Notes = order.Notes,
+                        });
                     }
                 }
                 else if (Role == "User" || Role == "Company")
                 {
-                    var result = await _db.newOrders.Where(l => l.UserId == ID && l.statuOrder == "تحت الإجراء" && l.Accept != null).ToListAsync();
-                    if (result.Any())
+                    var result = await _db.newOrders
+                        .Where(l => l.UserId == ID && l.statuOrder == "تحت الإجراء" && l.Accept != null)
+                        .OrderByDescending(l => l.Date)
+                        .ToListAsync();
+
+                    foreach (var order in result)
                     {
-                        List<GetOrdersDTO> getOrdersDTOs = new List<GetOrdersDTO>();
+                        var typeOrder = await _db.typeOrders.FirstOrDefaultAsync(l => l.newOrderId == order.Id);
 
-                        foreach (var order in result)
+                        ordersDTOs.Add(new GetOrdersDTO
                         {
-                            var typeOrders = await _db.typeOrders
-                                .Where(l => l.newOrderId == order.Id)
-                                .ToListAsync();
-
-                            getOrdersDTOs.Add(new GetOrdersDTO
-                            {
-                                Id = order.Id.ToString(),
-                                statuOrder = "في إنتظار المخلص لتنفيذ طلبك",
-                                Location = order.Location,
-                                typeOrder = typeOrders.First().typeOrder,
-                                Date = order.Date!.Value.ToString("dddd, dd MMMM yyyy", culture),
-                            });
-                        }
-
-                        return Ok(getOrdersDTOs);
+                            Id = order.Id.ToString(),
+                            statuOrder = "في إنتظار المخلص لتنفيذ طلبك",
+                            Location = order.Location,
+                            typeOrder = typeOrder?.typeOrder,
+                            Date = order.Date!.Value.ToString("dddd, dd MMMM yyyy", culture),
+                        });
                     }
                 }
-                else if (Role == "Admin")
+                else if (Role == "Admin" || Role == "Manager")
                 {
-                    var result = await _db.newOrders.Where(l => l.statuOrder == "تحت الإجراء" && l.Accept != null).ToListAsync();
-                    if (result.Any())
+                    var result = await _db.newOrders
+                        .Where(l => l.statuOrder == "تحت الإجراء" && l.Accept != null)
+                        .OrderByDescending(l => l.Date)
+                        .ToListAsync();
+
+                    foreach (var order in result)
                     {
-                        List<GetOrdersDTO> getOrdersDTOs = new List<GetOrdersDTO>();
+                        var typeOrder = await _db.typeOrders.FirstOrDefaultAsync(l => l.newOrderId == order.Id);
+                        var Response = await _functions.BrokerandUser(order.UserId!, order.Accept!);
 
-                        foreach (var order in result)
+                        if (Response.Value.TryGetProperty("user", out JsonElement user) &&
+                            Response.Value.TryGetProperty("broker", out JsonElement broker))
                         {
-                            var typeOrders = await _db.typeOrders
-                                .Where(l => l.newOrderId == order.Id && order.Accept != null)
-                                .ToListAsync();
-                            var Response = await _functions.BrokerandUser(order.UserId!, order.Accept!);
-
-                            if (Response.Value.TryGetProperty("user", out JsonElement User) &&
-                                Response.Value.TryGetProperty("broker", out JsonElement Broker))
+                            if (user.TryGetProperty("fullName", out JsonElement userName) &&
+                                user.TryGetProperty("email", out JsonElement userEmail) &&
+                                broker.TryGetProperty("fullName", out JsonElement brokerName) &&
+                                broker.TryGetProperty("email", out JsonElement brokerEmail))
                             {
-                                if (User.TryGetProperty("fullName", out JsonElement UserName) &&
-                                    User.TryGetProperty("email", out JsonElement UserEmail) &&
-                                    Broker.TryGetProperty("fullName", out JsonElement BrokerName) &&
-                                    Broker.TryGetProperty("email", out JsonElement BrokerEmail))
-                                    getOrdersDTOs.Add(new GetOrdersDTO
-                                    {
-                                        Id = order.Id.ToString(),
-                                        statuOrder = "فى إنتظار المخلص لتنفيذ طلب العميل",
-                                        Location = order.Location,
-                                        typeOrder = typeOrders.First().typeOrder,
-                                        Date = order.Date!.Value.ToString("dddd, dd MMMM yyyy", culture),
-                                        fullName = UserName.ToString(),
-                                        Email = UserEmail.ToString(),
-                                        BrokerEmail = BrokerEmail.ToString(),
-                                        BrokerName = BrokerName.ToString(),
-                                    });
+                                ordersDTOs.Add(new GetOrdersDTO
+                                {
+                                    Id = order.Id.ToString(),
+                                    statuOrder = "فى إنتظار المخلص لتنفيذ طلب العميل",
+                                    Location = order.Location,
+                                    typeOrder = typeOrder?.typeOrder,
+                                    Date = order.Date!.Value.ToString("dddd, dd MMMM yyyy", culture),
+                                    fullName = userName.ToString(),
+                                    Email = userEmail.ToString(),
+                                    BrokerName = brokerName.ToString(),
+                                    BrokerEmail = brokerEmail.ToString(),
+                                });
                             }
                         }
-                        return Ok(getOrdersDTOs);
                     }
                 }
-                return Ok(new string[] { });
+
+                var totalCount = ordersDTOs.Count;
+                var totalPages = (int)Math.Ceiling((double)totalCount / PageSize);
+                var paginatedOrders = ordersDTOs
+                    .Skip((Page - 1) * PageSize)
+                    .Take(PageSize)
+                    .ToList();
+
+                return Ok(new
+                {
+                    TotalPages = totalPages,
+                    Page,
+                    totalOrders = totalCount,
+                    data = paginatedOrders
+                });
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
+
 
         [Authorize(Roles = "Broker")]
         [HttpPost("Change-Statu-Broker")]
@@ -529,215 +600,206 @@ namespace User.Controllers
                 }
                 return BadRequest(new ApiResponse { Message = "هنا خطأ في البيانات المدخلة" });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
+                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق ", Data = ex.Message });
             }
         }
 
         // الطلبات المحولة من خدمة العملاء
         [Authorize(Roles = "Broker,Admin,Manager")]
-        [HttpGet("Order-Transfer-From-CustomerService")]
-        public async Task<IActionResult> orderTransferFromCustomerService()
+        [HttpGet("Order-Transfer-From-CustomerService/{Page}")]
+        public async Task<IActionResult> orderTransferFromCustomerService(int Page)
         {
-
             try
             {
+                const int PageSize = 10;
                 var ID = User.FindFirst("ID")?.Value;
                 var Role = User.FindFirstValue("Role");
+
                 if (string.IsNullOrEmpty(ID))
-                {
                     return BadRequest(new ApiResponse { Message = "لم يتم العثور على معرف المستخدم في بيانات الاعتماد" });
-                }
-                CultureInfo culture = new CultureInfo("ar-SA")
+
+                CultureInfo culture = new("ar-SA")
                 {
                     DateTimeFormat = { Calendar = new GregorianCalendar() },
                     NumberFormat = { DigitSubstitution = DigitShapes.NativeNational }
                 };
+
+                List<GetOrdersDTO> ordersDTOs = new();
+
+                var baseQuery = _db.newOrders
+                    .Where(l => l.statuOrder == "محولة" || l.statuOrder == "لم يتم التنفيذ");
+
                 if (Role == "Broker")
-                {
-                    var resultBroker = await _db.newOrders
-                                .Where(l => l.Accept == ID && l.statuOrder == "محولة" || l.statuOrder == "لم يتم التنفيذ")
-                                .Select(order => new
-                                {
-                                    order.Id,
-                                    order.statuOrder,
-                                    order.Location,
-                                    order.Date,
-                                    order.Notes
-                                })
-                                .ToListAsync();
-                    List<GetOrdersDTO> ordersDTOs = new List<GetOrdersDTO>();
-                    if (resultBroker.Any())
-                    {
-                        foreach (var order in resultBroker)
-                        {
-                            var typeOrder = await _db.typeOrders
-                                    .Where(l => l.newOrderId == order.Id)
-                                    .Select(l => new { l.typeOrder })
-                                    .FirstOrDefaultAsync();
+                    baseQuery = baseQuery.Where(l => l.Accept == ID);
 
-                            ordersDTOs.Add(new GetOrdersDTO
-                            {
-                                Id = order.Id.ToString(),
-                                statuOrder = order.statuOrder,
-                                Location = order.Location,
-                                typeOrder = typeOrder?.typeOrder,
-                                Date = order.Date!.Value.ToString("dddd, dd MMMM yyyy", culture),
-                                Notes = order.Notes,
-                            });
-                        }
-                        return Ok(ordersDTOs);
-                    }
-                }
-                else if (Role == "Admin")
-                {
-                    var resultBroker = await _db.newOrders
-                               .Where(l => l.statuOrder == "محولة" || l.statuOrder == "لم يتم التنفيذ")
-                               .Select(order => new
-                               {
-                                   order.Id,
-                                   order.statuOrder,
-                                   order.Location,
-                                   order.Date,
-                                   order.Notes,
-                                   order.Accept,
-                                   order.AcceptCustomerService,
-                               })
-                               .ToListAsync();
-                    List<GetOrdersDTO> ordersDTOs = new List<GetOrdersDTO>();
+                var result = await baseQuery
+                    .OrderByDescending(o => o.Date)
+                    .Skip((Page - 1) * PageSize)
+                    .Take(PageSize)
+                    .ToListAsync();
 
-                    if (resultBroker.Any())
+                int totalCount = await baseQuery.CountAsync();
+                int totalPages = (int)Math.Ceiling((double)totalCount / PageSize);
+
+                foreach (var order in result)
+                {
+                    var typeOrder = await _db.typeOrders.FirstOrDefaultAsync(t => t.newOrderId == order.Id);
+
+                    var dto = new GetOrdersDTO
                     {
-                        foreach (var order in resultBroker)
+                        Id = order.Id.ToString(),
+                        statuOrder = order.statuOrder,
+                        Location = order.Location,
+                        typeOrder = typeOrder?.typeOrder,
+                        Date = order.Date?.ToString("dddd, dd MMMM yyyy", culture),
+                        Notes = order.Notes
+                    };
+
+                    if (Role != "Broker")
+                    {
+                        var response = await _functions.BrokerandUser(order.AcceptCustomerService!, order.Accept!);
+
+                        if (response.Value.TryGetProperty("user", out var user) &&
+                            response.Value.TryGetProperty("broker", out var broker))
                         {
-                            var typeOrder = await _db.typeOrders
-                                    .Where(l => l.newOrderId == order.Id)
-                                    .Select(l => new { l.typeOrder })
-                                    .FirstOrDefaultAsync();
-                            var Response = await _functions.BrokerandUser(order.AcceptCustomerService!, order.Accept!);
-                            if (Response.Value.TryGetProperty("user", out JsonElement User) &&
-                               Response.Value.TryGetProperty("broker", out JsonElement Broker))
-                            {
-                                if (User.TryGetProperty("fullName", out JsonElement CustomerServiceName) &&
-                                    User.TryGetProperty("email", out JsonElement CustomerServiceEmail) &&
-                                    Broker.TryGetProperty("fullName", out JsonElement BrokerName) &&
-                                    Broker.TryGetProperty("email", out JsonElement BrokerEmail))
-                                    ordersDTOs.Add(new GetOrdersDTO
-                                    {
-                                        Id = order.Id.ToString(),
-                                        statuOrder = order.statuOrder,
-                                        Location = order.Location,
-                                        typeOrder = typeOrder?.typeOrder,
-                                        Date = order.Date!.Value.ToString("dddd, dd MMMM yyyy", culture),
-                                        Notes = order.Notes,
-                                        CustomerServiceEmail = CustomerServiceEmail.ToString(),
-                                        CustomerServiceName = CustomerServiceName.ToString(),
-                                        BrokerEmail = BrokerEmail.ToString(),
-                                        BrokerName = BrokerName.ToString(),
-                                    });
-                            }
-                            return Ok(ordersDTOs);
+                            dto.CustomerServiceEmail = user.GetProperty("email").ToString();
+                            dto.CustomerServiceName = user.GetProperty("fullName").ToString();
+                            dto.BrokerEmail = broker.GetProperty("email").ToString();
+                            dto.BrokerName = broker.GetProperty("fullName").ToString();
                         }
                     }
+
+                    ordersDTOs.Add(dto);
                 }
-                return Ok(new string[] { });
+
+                return Ok(new
+                {
+                    Page,
+                    PageSize,
+                    TotalPages = totalPages,
+                    TotalCount = totalCount,
+                    Data = ordersDTOs
+                });
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
+                return StatusCode(500, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
+
 
 
         //السجل للمخلص
         [Authorize(Roles = "Broker,User,Company")]
-        [HttpGet("Get-All-Orders-Brokers")]
-        public async Task<IActionResult> getAllOrdersBrokers()
+        [HttpGet("Get-All-Orders-Brokers/{Page}")]
+        public async Task<IActionResult> getAllOrdersBrokers(int Page)
         {
             try
             {
+                const int PageSize = 10;
                 var ID = User.FindFirstValue("ID");
                 var Role = User.FindFirstValue("Role");
+
                 if (string.IsNullOrEmpty(ID))
-                {
                     return BadRequest(new ApiResponse { Message = "لم يتم العثور على معرف المستخدم في بيانات الاعتماد" });
-                }
-                CultureInfo culture = new CultureInfo("ar-SA")
+
+                CultureInfo culture = new("ar-SA")
                 {
                     DateTimeFormat = { Calendar = new GregorianCalendar() },
                     NumberFormat = { DigitSubstitution = DigitShapes.NativeNational }
                 };
+
+                var ordersList = new List<GetOrdersDTO>();
+
                 if (Role == "Broker")
                 {
-                    var result = await _db.values
-                            .Where(v => v.BrokerID == ID)
-                            .GroupBy(v => v.newOrderId)
-                            .Select(g => g.First().newOrderId)
-                            .Join(
-                                _db.newOrders,
-                                newOrderId => newOrderId,
-                                order => order.Id,
-                                (newOrderId, order) => new GetOrdersDTO
-                                {
-                                    Date = order.Date!.Value.ToString("dddd, dd MMMM yyyy", culture),
-                                    statuOrder = order.statuOrder == "تحت الإجراء" ? "في إنتظارك لقبول الطلب" :
-                                                 order.statuOrder == "قيد الإنتظار" ? "فى إنتظار العميل قبول عرضك" :
-                                                 order.statuOrder == "لم يتم التحويل" ? "في إنتظار رد خدمة العملاء" :
-                                                 order.statuOrder == "تم التحويل" ? "تم تنفيذ العملية بنجاح" :
-                                                 order.statuOrder == "منفذ" ? "في إنتظار رد خدمة العملاء" :
-                                                 order.statuOrder == "ملغى" ? "في إنتظار رد خدمة العملاء" :
-                                                 order.statuOrder == "محذوفة" ? "تم حذف الطلب من قبل خدمة العملاء" :
-                                                 order.statuOrder == "لم يتم التنفيذ" ? "في إنتظار رد خدمة العملاء" :
-                                                 order.statuOrder == "تم التنفيذ" ? "في إانتظار رد المحاسب" :
-                                                 "",
-                                    Location = order.Location,
-                                    Id = order.Id.ToString(),
-                                    Notes = order.Notes,
-                                })
-                            .ToListAsync();
-                    return Ok(result);
+                    var baseQuery = _db.values
+                        .Where(v => v.BrokerID == ID)
+                        .GroupBy(v => v.newOrderId)
+                        .Select(g => g.First().newOrderId)
+                        .Join(_db.newOrders,
+                              newOrderId => newOrderId,
+                              order => order.Id,
+                              (newOrderId, order) => order);
+
+                    int totalCount = await baseQuery.CountAsync();
+                    int totalPages = (int)Math.Ceiling((double)totalCount / PageSize);
+
+                    var result = await baseQuery
+                        .OrderByDescending(o => o.Date)
+                        .Skip((Page - 1) * PageSize)
+                        .Take(PageSize)
+                        .ToListAsync();
+
+                    foreach (var order in result)
+                    {
+                        ordersList.Add(new GetOrdersDTO
+                        {
+                            Date = order.Date?.ToString("dddd, dd MMMM yyyy", culture),
+                            statuOrder = TranslateStatus(order.statuOrder!),
+                            Location = order.Location,
+                            Id = order.Id.ToString(),
+                            Notes = order.Notes
+                        });
+                    }
+
+                    return Ok(new { Page, PageSize, TotalPages = totalPages, TotalCount = totalCount, Data = ordersList });
                 }
                 else if (Role == "User" || Role == "Company")
                 {
-                    var result = await _db.newOrders.Where(l => l.UserId == ID).Select(g => new
-                    {
-                        g.Id,
-                        g.Location,
-                        g.Date,
-                        g.statuOrder,
-                        g.Notes,
-                    }).ToListAsync();
-                    List<GetOrdersDTO> orders = new List<GetOrdersDTO>();
+                    var baseQuery = _db.newOrders.Where(l => l.UserId == ID);
+
+                    int totalCount = await baseQuery.CountAsync();
+                    int totalPages = (int)Math.Ceiling((double)totalCount / PageSize);
+
+                    var result = await baseQuery
+                        .OrderByDescending(o => o.Date)
+                        .Skip((Page - 1) * PageSize)
+                        .Take(PageSize)
+                        .ToListAsync();
+
                     foreach (var order in result)
                     {
-                        orders.Add(new GetOrdersDTO
+                        ordersList.Add(new GetOrdersDTO
                         {
-                            Date = order.Date!.Value.ToString("dddd, dd MMMM yyyy", culture),
-                            statuOrder = order.statuOrder == "تحت الإجراء" ? "في إنتظارك لقبول الطلب" :
-                                        order.statuOrder == "قيد الإنتظار" ? "فى إنتظار تقديم العروض" :
-                                        order.statuOrder == "لم يتم التحويل" ? "في إنتظار رد خدمة العملاء" :
-                                        order.statuOrder == "تم التحويل" ? "تم تنفبذ العملية بنجاح" :
-                                        order.statuOrder == "منفذ" ? "في إنتظار رد خدمة العملاء" :
-                                        order.statuOrder == "ملغى" ? "في إنتظار رد خدمة العملاء" :
-                                        order.statuOrder == "محذوفة" ? "تم حذف الطلب من قبل خدمة العملاء" :
-                                        order.statuOrder == "لم يتم التنفيذ" ? "في إنتظار رد خدمة العملاء" :
-                                        order.statuOrder == "تم التنفيذ" ? "في إانتظار رد المحاسب" :
-                            "",
+                            Date = order.Date?.ToString("dddd, dd MMMM yyyy", culture),
+                            statuOrder = TranslateStatus(order.statuOrder!),
                             Location = order.Location,
                             Id = order.Id.ToString(),
-                            Notes = order.Notes,
+                            Notes = order.Notes
                         });
                     }
-                    return Ok(orders);
+
+                    return Ok(new { Page, PageSize, TotalPages = totalPages, TotalCount = totalCount, Data = ordersList });
                 }
-                return Ok();
+
+                return Ok(new { Page, PageSize, TotalPages = 0, TotalCount = 0, Data = ordersList });
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
+                return StatusCode(500, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
+
+        private string TranslateStatus(string statuOrder)
+        {
+            return statuOrder switch
+            {
+                "تحت الإجراء" => "في إنتظارك لقبول الطلب",
+                "قيد الإنتظار" => "فى إنتظار تقديم العروض",
+                "لم يتم التحويل" => "في إنتظار رد خدمة العملاء",
+                "تم التحويل" => "تم تنفيذ العملية بنجاح",
+                "منفذ" => "في إنتظار رد خدمة العملاء",
+                "ملغى" => "في إنتظار رد خدمة العملاء",
+                "محذوفة" => "تم حذف الطلب من قبل خدمة العملاء",
+                "لم يتم التنفيذ" => "في إنتظار رد خدمة العملاء",
+                "تم التنفيذ" => "في إنتظار رد المحاسب",
+                _ => statuOrder
+            };
+        }
+
 
         [Authorize(Roles = "Broker,User,Manager,Admin ,Company")]
         [HttpGet("Get-Count-Accept-Failed-Wait-Orders-Broker")]
@@ -823,7 +885,7 @@ namespace User.Controllers
                 }
 
                 var NumberOfAllOrders = await _db.newOrders.Where(l => l.statuOrder == "قيد الإنتظار" && l.Date!.Value.AddDays(7) > DateTime.Now).CountAsync();
-                if(Role == "Admin")
+                if (Role == "Admin")
                 {
                     var currentOrdersAdmin = await _db.values.GroupBy(v => v.newOrderId).Select(g => g.First().newOrderId)
                    .Join(
@@ -955,7 +1017,7 @@ namespace User.Controllers
 
         [Authorize]
         [HttpPost("Data-Protection")]
-        public async Task<IActionResult> data(OrderIdDTO orderId)
+        public IActionResult data(OrderIdDTO orderId)
         {
             if (orderId.orderId != 0)
             {

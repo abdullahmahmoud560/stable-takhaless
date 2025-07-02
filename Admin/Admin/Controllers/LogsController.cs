@@ -24,22 +24,32 @@ namespace Admin.Controllers
         }
 
         [Authorize(Roles = "Admin,Manager")]
-        [HttpGet("Logs/{NewOrderId}")]
-        public async Task<IActionResult> GetFilteredLogs(int NewOrderId)
+        [HttpGet("Logs/{NewOrderId}/{Page}")]
+        public async Task<IActionResult> GetFilteredLogs(int NewOrderId, int Page)
         {
             try
             {
-                var culture = new CultureInfo("ar-SA");
-                culture.DateTimeFormat.Calendar = new GregorianCalendar();
-                culture.NumberFormat.DigitSubstitution = DigitShapes.NativeNational;
+                const int pageSize = 10;
 
-                var logs = await _db.Logs
-                    .Where(log => log.NewOrderId == NewOrderId)
+                var culture = new CultureInfo("ar-SA")
+                {
+                    DateTimeFormat = { Calendar = new GregorianCalendar() },
+                    NumberFormat = { DigitSubstitution = DigitShapes.NativeNational }
+                };
+
+                var query = _db.Logs.Where(log => log.NewOrderId == NewOrderId).OrderByDescending(l => l.TimeStamp);
+
+                var totalCount = await query.CountAsync();
+                var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+                var logs = await query
+                    .Skip((Page - 1) * pageSize)
+                    .Take(pageSize)
                     .ToListAsync();
 
                 if (!logs.Any())
                 {
-                    return Ok(new string[] { });
+                    return Ok(new { Page = Page, PageSize = pageSize, TotalCount = totalCount, TotalPages = totalPages, Data = new List<LogsDTO>() });
                 }
 
                 var logsDTO = new List<LogsDTO>();
@@ -52,11 +62,9 @@ namespace Admin.Controllers
                         response.Value.TryGetProperty("fullName", out JsonElement fullName) &&
                         response.Value.TryGetProperty("email", out JsonElement email))
                     {
-                        string formattedDate = string.Empty;
-                        if (log.TimeStamp != null)
-                        {
-                            formattedDate = ((DateTime)log.TimeStamp).ToString("dddd, dd MMMM yyyy, hh:mm tt", culture);
-                        }
+                        string formattedDate = log.TimeStamp.HasValue
+                            ? log.TimeStamp.Value.ToString("dddd, dd MMMM yyyy, hh:mm tt", culture)
+                            : string.Empty;
 
                         logsDTO.Add(new LogsDTO
                         {
@@ -70,11 +78,18 @@ namespace Admin.Controllers
                     }
                 }
 
-                return Ok(logsDTO);
+                return Ok(new
+                {
+                    Page = Page,
+                    PageSize = pageSize,
+                    TotalCount = totalCount,
+                    TotalPages = totalPages,
+                    Data = logsDTO
+                });
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError,new ApiResponse { Message = "حدث خطأ، برجاء المحاولة لاحقًا" });
+                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ، برجاء المحاولة لاحقًا" });
             }
         }
 

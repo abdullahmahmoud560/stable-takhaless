@@ -23,6 +23,7 @@ namespace User.Controllers
         private readonly HangFire _hangFire;
         private readonly IWebHostEnvironment _env;
 
+
         public UserController(DB db, IHubContext<ChatHub> hubContext, Functions functions, HangFire hangFire, IWebHostEnvironment env)
         {
             _db = db;
@@ -257,66 +258,100 @@ namespace User.Controllers
         }
 
         [Authorize(Roles = "User ,Company")]
-        [HttpGet("Get-Accept-Orders-Users")]
-        public async Task<IActionResult> getAcceptOrderUsers()
+        [HttpGet("Get-Accept-Orders-Users/{Page}")]
+        public async Task<IActionResult> getAcceptOrderUsers(int Page)
         {
-
             try
             {
+                const int pageSize = 10;
                 var ID = User.FindFirstValue("ID");
                 if (string.IsNullOrEmpty(ID))
                 {
                     return BadRequest(new ApiResponse { Message = "لم يتم العثور على معرف المستخدم في بيانات الاعتماد" });
                 }
-                var allOrders = await _db.newOrders.Where(user => user.UserId == ID).ToListAsync();
 
-                if (!allOrders.Any())
+                var baseQuery = _db.newOrders
+                    .Where(user => user.UserId == ID && user.statuOrder == "تم التحويل")
+                    .OrderByDescending(order => order.Date);
+
+                var totalCount = await baseQuery.CountAsync();
+                var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+                var pagedOrders = await baseQuery
+                    .Skip((Page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync();
+
+                if (!pagedOrders.Any())
                 {
                     return NotFound(new ApiResponse { Message = "لا توجد طلبات مرتبطة بهذا المستخدم" });
                 }
 
-                List<GetOrdersDTO> orders = new List<GetOrdersDTO>();
+                List<GetOrdersDTO> orders = new();
 
-                foreach (var order in allOrders)
+                foreach (var order in pagedOrders)
                 {
-                    if (string.Equals(order.statuOrder, "تم التحويل", StringComparison.OrdinalIgnoreCase))
+                    var typeOrder = await _db.typeOrders
+                        .FirstOrDefaultAsync(l => l.newOrderId == order.Id);
+
+                    orders.Add(new GetOrdersDTO
                     {
-                        var typeOrder = await _db.typeOrders.FirstOrDefaultAsync(l => l.newOrderId == order.Id);
-                        orders.Add(new GetOrdersDTO
-                        {
-                            Location = order.Location ?? "غير معروف",
-                            typeOrder = typeOrder!.typeOrder ?? "غير معروف",
-                            statuOrder = order.statuOrder ?? "غير معروف",
-                            Id = order.Id.ToString(),
-                        });
-                    }
+                        Location = order.Location ?? "غير معروف",
+                        typeOrder = typeOrder?.typeOrder ?? "غير معروف",
+                        statuOrder = order.statuOrder ?? "غير معروف",
+                        Id = order.Id.ToString(),
+                    });
                 }
-                return Ok(orders);
+
+                return Ok(new
+                {
+                    Page = Page,
+                    PageSize = pageSize,
+                    TotalPages = totalPages,
+                    TotalCount = totalCount,
+                    Data = orders
+                });
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
+                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse
+                {
+                    Message = "حدث خطأ برجاء المحاولة فى وقت لاحق "
+                });
             }
         }
 
+
         [Authorize(Roles = "User,Company")]
-        [HttpGet("Get-Orders")]
-        public async Task<IActionResult> getOrders()
+        [HttpGet("Get-Orders/{Page}")]
+        public async Task<IActionResult> getOrders(int Page)
         {
             try
             {
+                const int pageSize = 10;
                 var ID = User.FindFirstValue("ID");
                 if (string.IsNullOrEmpty(ID))
                 {
                     return BadRequest("لم يتم العثور على معرف المستخدم");
                 }
-                var Allorders = _db.newOrders.Where(l => l.UserId == ID && l.statuOrder == "قيد الإنتظار").ToList();
-                if (!Allorders.Any())
+
+                var query = _db.newOrders
+                               .Where(l => l.UserId == ID && l.statuOrder == "قيد الإنتظار")
+                               .OrderByDescending(l => l.Date);
+
+                var totalCount = await query.CountAsync();
+                var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+                var orders = await query.Skip((Page - 1) * pageSize).Take(pageSize).ToListAsync();
+
+                if (!orders.Any())
                 {
                     return Ok(new string[] { });
                 }
+
                 List<GetOrdersDTO> getOrdersDTOs = new List<GetOrdersDTO>();
-                foreach (var order in Allorders)
+
+                foreach (var order in orders)
                 {
                     var typeOrder = await _db.typeOrders.FirstOrDefaultAsync(l => l.newOrderId == order.Id);
                     getOrdersDTOs.Add(new GetOrdersDTO
@@ -324,59 +359,100 @@ namespace User.Controllers
                         statuOrder = "فى إنتظار تقديم العروض",
                         Location = order.Location,
                         Id = order.Id.ToString(),
-                        typeOrder = typeOrder!.typeOrder,
+                        typeOrder = typeOrder?.typeOrder ?? "غير معروف"
                     });
                 }
-                return Ok(getOrdersDTOs);
+
+                return Ok(new
+                {
+                    Page = Page,
+                    PageSize = pageSize,
+                    TotalCount = totalCount,
+                    TotalPages = totalPages,
+                    Data = getOrdersDTOs
+                });
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
+                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse
+                {
+                    Message = "حدث خطأ برجاء المحاولة فى وقت لاحق "
+                });
             }
         }
 
+
         [Authorize(Roles = "Admin,Manager")]
-        [HttpGet("Get-Orders-Admin")]
-        public async Task<IActionResult> getOrdersAdmin()
+        [HttpGet("Get-Orders-Admin/{Page}")]
+        public async Task<IActionResult> getOrdersAdmin(int Page)
         {
             try
             {
-                var Allorders = _db.newOrders.Where(l => l.statuOrder == "قيد الإنتظار").ToList();
-                if (!Allorders.Any())
+                const int pageSize = 10;
+
+                var query = _db.newOrders
+                               .Where(l => l.statuOrder == "قيد الإنتظار")
+                               .OrderByDescending(l => l.Date);
+
+                var totalCount = await query.CountAsync();
+                var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+                var orders = await query.Skip((Page - 1) * pageSize).Take(pageSize).ToListAsync();
+
+                if (!orders.Any())
                 {
                     return Ok(new string[] { });
                 }
+
                 List<GetOrdersDTO> getOrdersDTOs = new List<GetOrdersDTO>();
-                foreach (var order in Allorders)
+
+                foreach (var order in orders)
                 {
                     var typeOrder = await _db.typeOrders.FirstOrDefaultAsync(l => l.newOrderId == order.Id);
                     var Response = await _functions.SendAPI(order.UserId!);
+
                     if (Response.Value.TryGetProperty("fullName", out JsonElement fullName)
                         && Response.Value.TryGetProperty("email", out JsonElement Email))
+                    {
                         getOrdersDTOs.Add(new GetOrdersDTO
                         {
                             statuOrder = "في إنتظار المخلص لتقديم العروض",
                             Location = order.Location,
                             Id = order.Id.ToString(),
-                            typeOrder = typeOrder!.typeOrder,
+                            typeOrder = typeOrder?.typeOrder ?? "غير معروف",
                             fullName = fullName.ToString(),
                             Email = Email.ToString()
                         });
+                    }
                 }
-                return Ok(getOrdersDTOs);
+
+                return Ok(new
+                {
+                    Page = Page,
+                    PageSize = pageSize,
+                    TotalCount = totalCount,
+                    TotalPages = totalPages,
+                    Data = getOrdersDTOs
+                });
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
+                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse
+                {
+                    Message = "حدث خطأ برجاء المحاولة فى وقت لاحق "
+                });
             }
         }
 
-        [Authorize(Roles = ("User, Broker,Company"))]
-        [HttpGet("Wallet")]
-        public async Task<IActionResult> Wallet()
+
+        [Authorize(Roles = "User,Broker,Company")]
+        [HttpGet("Wallet/{Page}")]
+        public async Task<IActionResult> Wallet(int Page)
         {
             try
             {
+                const int pageSize = 10;
+
                 var ID = User.FindFirstValue("ID");
                 var Role = User.FindFirstValue("Role");
 
@@ -384,7 +460,7 @@ namespace User.Controllers
                     return BadRequest(new ApiResponse { Message = "المستخدم غير موجود" });
 
                 if (string.IsNullOrEmpty(Role))
-                    return BadRequest(new ApiResponse { Message = "لا توجد ادوار لهذا المستخدم" });
+                    return BadRequest(new ApiResponse { Message = "لا توجد أدوار لهذا المستخدم" });
 
                 IQueryable<NewOrder> ordersQuery = _db.newOrders.AsNoTracking();
 
@@ -396,12 +472,18 @@ namespace User.Controllers
                 {
                     ordersQuery = ordersQuery.Where(l => l.Accept == ID);
                 }
-                ;
 
-                var orders = await ordersQuery.ToListAsync();
+                var totalCount = await ordersQuery.CountAsync();
+                var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+                var orders = await ordersQuery
+                    .OrderByDescending(o => o.Id)
+                    .Skip((Page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync();
 
                 if (!orders.Any())
-                    return Ok(new List<GetOrdersDTO>());
+                    return Ok(new { Page = Page, PageSize = pageSize, TotalCount = totalCount, TotalPages = totalPages, Data = new List<GetOrdersDTO>() });
 
                 var orderIds = orders.Select(o => o.Id).ToList();
 
@@ -431,13 +513,21 @@ namespace User.Controllers
                     };
                 }).ToList();
 
-                return Ok(result);
+                return Ok(new
+                {
+                    Page = Page,
+                    PageSize = pageSize,
+                    TotalCount = totalCount,
+                    TotalPages = totalPages,
+                    Data = result
+                });
             }
             catch (Exception)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
             }
         }
+
 
         [Authorize(Roles = "User,Admin,Manager,Company")]
         [HttpGet("Number-Of-Operations-User")]

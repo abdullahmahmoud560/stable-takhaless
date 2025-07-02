@@ -43,19 +43,40 @@ namespace CustomerSerrvices.Controllers
         }
 
 
-        [Authorize(Roles =("Admin,CustomerService"))]
-        [HttpGet("Get-Form")]
-        public async Task<IActionResult> getForm()
+        [Authorize(Roles = ("Admin,CustomerService"))]
+        [HttpGet("Get-Form/{Page}")]
+        public async Task<IActionResult> getForm(int page)
         {
-            if (!ModelState.IsValid)
+            try
             {
-                return Ok(new ApiResponse { Message = "البيانات غير صحيحة" });
+                const int pageSize = 10;
+                if (page <= 0 || pageSize <= 0)
+                {
+                    return BadRequest(new ApiResponse { Message = "معلمات الصفحة غير صحيحة" });
+                }
+
+                var totalCount = await _dbContext.forms.CountAsync();
+                var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+
+                var forms = await _dbContext.forms
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync();
+
+                return Ok(new
+                {
+                    Page = page,
+                    PageSize = pageSize,
+                    TotalCount = totalCount,
+                    TotalPages = totalPages,
+                    Data = forms
+                });
             }
-            else
+            catch (Exception)
             {
-               var listOfForm = await _dbContext.forms.ToListAsync();
-                return Ok(listOfForm);
+                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ، برجاء المحاولة لاحقًا" });
             }
         }
+
     }
 }
