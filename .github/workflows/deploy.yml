@@ -82,7 +82,7 @@ jobs:
         
         # Environment URLs (customize these for your environments)
         if [ "${{ github.event.inputs.environment || github.ref_name }}" = "production" ] || [ "${{ github.ref_name }}" = "main" ] || [ "${{ github.ref_name }}" = "stable-performance" ]; then
-          echo "app-url=https://takhleesak.com/" >> $GITHUB_OUTPUT
+          echo "app-url=https://test.takhleesak.com/" >> $GITHUB_OUTPUT
           echo "admin-url=https://admin.takhleesak.com/swagger/index.html" >> $GITHUB_OUTPUT
           echo "customer-service-url=https://customerservices.takhleesak.com/swagger/index.html" >> $GITHUB_OUTPUT
           echo "auth-url=https://firstproject.takhleesak.com/swagger/index.html" >> $GITHUB_OUTPUT

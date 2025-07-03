@@ -68,7 +68,7 @@ The workflow deploys the following microservices:
 The workflow automatically generates URLs for different environments:
 
 ### Production (main/stable-performance branches)
-- Main App: https://takhleesak.com/
+- Main App: https://test.takhleesak.com/
 - Admin Service: https://admin.takhleesak.com/swagger/index.html
 - Customer Service: https://customerservices.takhleesak.com/swagger/index.html
 - Auth Service: https://firstproject.takhleesak.com/swagger/index.html
