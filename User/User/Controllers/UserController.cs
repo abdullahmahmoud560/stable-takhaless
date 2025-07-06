@@ -287,7 +287,7 @@ namespace User.Controllers
 
                 if (!pagedOrders.Any())
                 {
-                    return NotFound(new ApiResponse { Message = "لا توجد طلبات مرتبطة بهذا المستخدم" });
+                    return Ok(new string[] {});
                 }
 
                 // ✅ تحسين: استخدام Select بدلاً من foreach
