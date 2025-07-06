@@ -38,7 +38,11 @@ namespace User.Controllers
                     NumberFormat = { DigitSubstitution = DigitShapes.NativeNational }
                 };
 
+                // ✅ تحسين: استخدام Include و AsNoTracking
                 var baseQuery = _db.newOrders
+                    .AsNoTracking()
+                    .Include(o => o.numberOfTypeOrders)
+                    .Include(o => o.NotesCustomerServices)
                     .Where(l => l.statuOrder == "منفذ")
                     .OrderByDescending(o => o.Date);
 
@@ -50,39 +54,48 @@ namespace User.Controllers
                     .Take(PageSize)
                     .ToListAsync();
 
-                List<GetOrdersDTO> ordersDTOs = new();
-                foreach (var accept in acceptedOrders)
-                {
-                    var typeOrder = await _db.typeOrders.FirstOrDefaultAsync(t => t.newOrderId == accept.Id);
-                    var Notes = await _db.notesCustomerServices.FirstOrDefaultAsync(n => n.newOrderId == accept.Id);
-                    var response = await _functions.SendAPI(accept.UserId!);
+                // ✅ تحسين: تجميع جميع الـ UserIDs مرة واحدة
+                var userIds = acceptedOrders.Select(o => o.UserId).Distinct().ToList();
+                var userData = new Dictionary<string, (string fullName, string email)>();
 
-                    if (response.HasValue &&
-                        response.Value.TryGetProperty("fullName", out JsonElement fullName) &&
-                        response.Value.TryGetProperty("email", out JsonElement Email))
+                foreach (var userId in userIds)
+                {
+                    if (!string.IsNullOrEmpty(userId))
                     {
-                        ordersDTOs.Add(new GetOrdersDTO
+                        var response = await _functions.SendAPI(userId);
+                        if (response.HasValue &&
+                            response.Value.TryGetProperty("fullName", out JsonElement fullName) &&
+                            response.Value.TryGetProperty("email", out JsonElement Email))
                         {
-                            Id = accept.Id.ToString(),
-                            statuOrder = accept.statuOrder,
-                            Location = accept.Location,
-                            typeOrder = typeOrder?.typeOrder,
-                            Date = accept.Date?.ToString("dddd, dd MMMM yyyy", culture),
-                            Email = Email.ToString(),
-                            fullName = fullName.ToString(),
-                            BrokerID = accept.Accept,
-                            Notes = Notes?.Notes ?? ""
-                        });
+                            userData[userId] = (fullName.ToString(), Email.ToString());
+                        }
                     }
                 }
+
+                // ✅ تحسين: استخدام Select بدلاً من foreach
+                var ordersDTOs = acceptedOrders.Select(accept =>
+                {
+                    var (fullName, email) = userData.GetValueOrDefault(accept.UserId!, ("", ""));
+                    return new GetOrdersDTO
+                    {
+                        Id = accept.Id.ToString(),
+                        statuOrder = accept.statuOrder,
+                        Location = accept.Location,
+                        typeOrder = accept.numberOfTypeOrders?.FirstOrDefault()?.typeOrder,
+                        Date = accept.Date?.ToString("dddd, dd MMMM yyyy", culture),
+                        Email = email,
+                        fullName = fullName,
+                        BrokerID = accept.Accept,
+                        Notes = accept.NotesCustomerServices?.FirstOrDefault()?.Notes ?? ""
+                    };
+                }).ToList();
 
                 return Ok(new
                 {
                     Page = Page,
-                    PageSize,
                     TotalPages = totalPages,
-                    TotalCount = totalCount,
-                    Data = ordersDTOs
+                    totalUser = totalCount,
+                    data = ordersDTOs
                 });
             }
             catch
@@ -105,7 +118,10 @@ namespace User.Controllers
                     NumberFormat = { DigitSubstitution = DigitShapes.NativeNational }
                 };
 
+                // ✅ تحسين: استخدام Include و AsNoTracking
                 var baseQuery = _db.newOrders
+                    .AsNoTracking()
+                    .Include(o => o.numberOfTypeOrders)
                     .Where(l => l.statuOrder == "ملغى")
                     .OrderByDescending(o => o.Date);
 
@@ -117,36 +133,46 @@ namespace User.Controllers
                     .Take(PageSize)
                     .ToListAsync();
 
-                List<GetOrdersDTO> ordersDTOs = new();
-                foreach (var order in result)
-                {
-                    var typeOrder = await _db.typeOrders.FirstOrDefaultAsync(t => t.newOrderId == order.Id);
-                    var response = await _functions.SendAPI(order.UserId!);
+                // ✅ تحسين: تجميع جميع الـ UserIDs مرة واحدة
+                var userIds = result.Select(o => o.UserId).Distinct().ToList();
+                var userData = new Dictionary<string, (string fullName, string email)>();
 
-                    if (response.HasValue &&
-                        response.Value.TryGetProperty("fullName", out JsonElement fullName) &&
-                        response.Value.TryGetProperty("email", out JsonElement Email))
+                foreach (var userId in userIds)
+                {
+                    if (!string.IsNullOrEmpty(userId))
                     {
-                        ordersDTOs.Add(new GetOrdersDTO
+                        var response = await _functions.SendAPI(userId);
+                        if (response.HasValue &&
+                            response.Value.TryGetProperty("fullName", out JsonElement fullName) &&
+                            response.Value.TryGetProperty("email", out JsonElement Email))
                         {
-                            Id = order.Id.ToString(),
-                            statuOrder = order.statuOrder,
-                            Location = order.Location,
-                            typeOrder = typeOrder?.typeOrder,
-                            Date = order.Date?.ToString("dddd, dd MMMM yyyy", culture),
-                            Email = Email.ToString(),
-                            fullName = fullName.ToString(),
-                            BrokerID = order.Accept
-                        });
+                            userData[userId] = (fullName.ToString(), Email.ToString());
+                        }
                     }
                 }
+
+                // ✅ تحسين: استخدام Select بدلاً من foreach
+                var ordersDTOs = result.Select(order =>
+                {
+                    var (fullName, email) = userData.GetValueOrDefault(order.UserId!, ("", ""));
+                    return new GetOrdersDTO
+                    {
+                        Id = order.Id.ToString(),
+                        statuOrder = order.statuOrder,
+                        Location = order.Location,
+                        typeOrder = order.numberOfTypeOrders?.FirstOrDefault()?.typeOrder,
+                        Date = order.Date?.ToString("dddd, dd MMMM yyyy", culture),
+                        Email = email,
+                        fullName = fullName,
+                        BrokerID = order.Accept
+                    };
+                }).ToList();
 
                 return Ok(new
                 {
                     Page = Page,
-                    PageSize,
                     TotalPages = totalPages,
-                    TotalCount = totalCount,
+                    totalUser = totalCount,
                     Data = ordersDTOs
                 });
             }
@@ -227,7 +253,11 @@ namespace User.Controllers
                     NumberFormat = { DigitSubstitution = DigitShapes.NativeNational }
                 };
 
+                // ✅ تحسين: استخدام Include و AsNoTracking
                 var baseQuery = _db.newOrders
+                    .AsNoTracking()
+                    .Include(o => o.numberOfTypeOrders)
+                    .Include(o => o.notesAccountings)
                     .Where(l => l.statuOrder == "لم يتم التحويل")
                     .OrderByDescending(o => o.Date);
 
@@ -239,50 +269,70 @@ namespace User.Controllers
                     .Take(pageSize)
                     .ToListAsync();
 
-                List<GetOrdersDTO> ordersDTOs = new();
+                // ✅ تحسين: تجميع جميع الـ UserIDs و BrokerIDs مرة واحدة
+                var userBrokerPairs = result
+                    .Where(o => !string.IsNullOrEmpty(o.Accept) && !string.IsNullOrEmpty(o.AcceptAccount))
+                    .Select(o => new { o.Accept, o.AcceptAccount })
+                    .Distinct()
+                    .ToList();
 
-                foreach (var order in result)
+                var userBrokerData = new Dictionary<string, JsonElement>();
+
+                foreach (var pair in userBrokerPairs)
                 {
-                    var typeOrder = await _db.typeOrders
-                        .Where(l => l.newOrderId == order.Id)
-                        .FirstOrDefaultAsync();
+                    var key = $"{pair.Accept}_{pair.AcceptAccount}";
+                    if (!userBrokerData.ContainsKey(key))
+                    {
+                        var response = await _functions.BrokerandUser(pair.Accept!, pair.AcceptAccount!);
+                        userBrokerData[key] = response.Value;
+                    }
+                }
 
-                    var response = await _functions.BrokerandUser(order.Accept!, order.AcceptAccount!);
+                // ✅ تحسين: استخدام Select بدلاً من foreach
+                var ordersDTOs = result.Select(order =>
+                {
+                    var key = $"{order.Accept}_{order.AcceptAccount}";
+                    var response = userBrokerData.GetValueOrDefault(key);
 
-                    if (response.Value.TryGetProperty("user", out JsonElement User) &&
-                        response.Value.TryGetProperty("broker", out JsonElement Account) &&
+                    if (response.TryGetProperty("user", out JsonElement User) &&
+                        response.TryGetProperty("broker", out JsonElement Account) &&
                         User.TryGetProperty("fullName", out JsonElement UserName) &&
                         User.TryGetProperty("email", out JsonElement UserEmail) &&
                         Account.TryGetProperty("fullName", out JsonElement AccountName) &&
                         Account.TryGetProperty("email", out JsonElement AccountEmail))
                     {
-                        var notesAccounting = await _db.notesAccountings
-                            .Where(l => l.newOrderId == order.Id)
-                            .FirstOrDefaultAsync();
-
-                        ordersDTOs.Add(new GetOrdersDTO
+                        return new GetOrdersDTO
                         {
                             Id = order.Id.ToString(),
                             statuOrder = order.statuOrder,
                             Location = order.Location,
-                            typeOrder = typeOrder?.typeOrder,
+                            typeOrder = order.numberOfTypeOrders?.FirstOrDefault()?.typeOrder,
                             Date = order.Date?.ToString("dddd, dd MMMM yyyy", culture),
                             Email = UserEmail.ToString(),
                             fullName = UserName.ToString(),
                             AccountName = AccountName.ToString(),
                             AccountEmail = AccountEmail.ToString(),
-                            Notes = notesAccounting?.Notes ?? "",
+                            Notes = order.notesAccountings?.FirstOrDefault()?.Notes ?? "",
                             BrokerID = order.Accept
-                        });
+                        };
                     }
-                }
+
+                    return new GetOrdersDTO
+                    {
+                        Id = order.Id.ToString(),
+                        statuOrder = order.statuOrder,
+                        Location = order.Location,
+                        typeOrder = order.numberOfTypeOrders?.FirstOrDefault()?.typeOrder,
+                        Date = order.Date?.ToString("dddd, dd MMMM yyyy", culture),
+                        BrokerID = order.Accept
+                    };
+                }).ToList();
 
                 return Ok(new
                 {
                     Page = Page,
-                    PageSize = pageSize,
                     TotalPages = totalPages,
-                    TotalCount = totalCount,
+                    totalUser = totalCount,
                     Data = ordersDTOs
                 });
             }
@@ -478,7 +528,10 @@ namespace User.Controllers
                     NumberFormat = { DigitSubstitution = DigitShapes.NativeNational }
                 };
 
+                // ✅ تحسين: استخدام Include و AsNoTracking
                 var baseQuery = _db.newOrders
+                    .AsNoTracking()
+                    .Include(o => o.numberOfTypeOrders)
                     .Where(l => l.statuOrder == "محذوفة")
                     .OrderByDescending(o => o.Date);
 
@@ -488,57 +541,71 @@ namespace User.Controllers
                 var deletedOrders = await baseQuery
                     .Skip((Page - 1) * pageSize)
                     .Take(pageSize)
-                    .Select(order => new
-                    {
-                        order.Id,
-                        order.statuOrder,
-                        order.Location,
-                        order.Date,
-                        order.Notes,
-                        order.AcceptCustomerService,
-                        order.UserId,
-                    }).ToListAsync();
+                    .ToListAsync();
 
-                List<GetOrdersDTO> getOrdersDTOs = new();
+                // ✅ تحسين: تجميع جميع الـ UserIDs و CustomerServiceIDs مرة واحدة
+                var userCustomerServicePairs = deletedOrders
+                    .Where(o => !string.IsNullOrEmpty(o.UserId) && !string.IsNullOrEmpty(o.AcceptCustomerService))
+                    .Select(o => new { o.UserId, o.AcceptCustomerService })
+                    .Distinct()
+                    .ToList();
 
-                foreach (var order in deletedOrders)
+                var userCustomerServiceData = new Dictionary<string, JsonElement>();
+
+                foreach (var pair in userCustomerServicePairs)
                 {
-                    var typeOrder = await _db.typeOrders
-                        .Where(l => l.newOrderId == order.Id)
-                        .Select(l => new { l.typeOrder })
-                        .FirstOrDefaultAsync();
+                    var key = $"{pair.UserId}_{pair.AcceptCustomerService}";
+                    if (!userCustomerServiceData.ContainsKey(key))
+                    {
+                        var Response = await _functions.BrokerandUser(pair.UserId!, pair.AcceptCustomerService!);
+                        userCustomerServiceData[key] = Response.Value;
+                    }
+                }
 
-                    var Response = await _functions.BrokerandUser(order.UserId!, order.AcceptCustomerService!);
+                // ✅ تحسين: استخدام Select بدلاً من foreach
+                var getOrdersDTOs = deletedOrders.Select(order =>
+                {
+                    var key = $"{order.UserId}_{order.AcceptCustomerService}";
+                    var Response = userCustomerServiceData.GetValueOrDefault(key);
 
-                    if (Response.Value.TryGetProperty("user", out JsonElement User) &&
-                        Response.Value.TryGetProperty("broker", out JsonElement CustomerService) &&
+                    if (Response.TryGetProperty("user", out JsonElement User) &&
+                        Response.TryGetProperty("broker", out JsonElement CustomerService) &&
                         User.TryGetProperty("fullName", out JsonElement UserName) &&
                         User.TryGetProperty("email", out JsonElement UserEmail) &&
                         CustomerService.TryGetProperty("fullName", out JsonElement CustomerServiceName) &&
                         CustomerService.TryGetProperty("email", out JsonElement CustomerServiceEmail))
                     {
-                        getOrdersDTOs.Add(new GetOrdersDTO
+                        return new GetOrdersDTO
                         {
                             Id = order.Id.ToString(),
                             statuOrder = order.statuOrder,
                             Location = order.Location,
-                            typeOrder = typeOrder?.typeOrder,
+                            typeOrder = order.numberOfTypeOrders?.FirstOrDefault()?.typeOrder,
                             Date = order.Date?.ToString("dddd, dd MMMM yyyy", culture),
                             Notes = order.Notes,
                             fullName = UserName.ToString(),
                             Email = UserEmail.ToString(),
                             CustomerServiceEmail = CustomerServiceEmail.ToString(),
                             CustomerServiceName = CustomerServiceName.ToString(),
-                        });
+                        };
                     }
-                }
+
+                    return new GetOrdersDTO
+                    {
+                        Id = order.Id.ToString(),
+                        statuOrder = order.statuOrder,
+                        Location = order.Location,
+                        typeOrder = order.numberOfTypeOrders?.FirstOrDefault()?.typeOrder,
+                        Date = order.Date?.ToString("dddd, dd MMMM yyyy", culture),
+                        Notes = order.Notes,
+                    };
+                }).ToList();
 
                 return Ok(new
                 {
                     Page = Page,
-                    PageSize = pageSize,
                     TotalPages = totalPages,
-                    TotalCount = totalCount,
+                    totalUser = totalCount,
                     Data = getOrdersDTOs
                 });
             }

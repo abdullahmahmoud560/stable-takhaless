@@ -37,80 +37,89 @@ namespace User.Controllers
                     NumberFormat = { DigitSubstitution = DigitShapes.NativeNational }
                 };
 
-                var result = await _db.newOrders
+                // ✅ تحسين: استخدام Include و AsNoTracking
+                var baseQuery = _db.newOrders
+                    .AsNoTracking()
+                    .Include(o => o.numberOfTypeOrders)
+                    .Include(o => o.values)
                     .Where(l => l.statuOrder == "تم التنفيذ")
-                    .Select(order => new
-                    {
-                        order.Id,
-                        order.statuOrder,
-                        order.Location,
-                        order.Date,
-                        order.UserId,
-                        order.Accept,
-                        order.AcceptCustomerService,
-                    })
+                    .OrderByDescending(o => o.Date);
+                var totalCount = await baseQuery.CountAsync();
+                var totalPages = (int)Math.Ceiling((double)totalCount / PageSize);
+
+                var result = await baseQuery
+                    .Skip((Page - 1) * PageSize)
+                    .Take(PageSize)
                     .ToListAsync();
 
-                if (!result.Any())
+                // ✅ تحسين: تجميع جميع الـ UserIDs و CustomerServiceIDs مرة واحدة
+                var userCustomerServicePairs = result
+                    .Where(o => !string.IsNullOrEmpty(o.Accept) && !string.IsNullOrEmpty(o.AcceptCustomerService))
+                    .Select(o => new { o.Accept, o.AcceptCustomerService })
+                    .Distinct()
+                    .ToList();
+
+                var userCustomerServiceData = new Dictionary<string, JsonElement>();
+
+                foreach (var pair in userCustomerServicePairs)
                 {
-                    return Ok(new string[] { });
+                    var key = $"{pair.Accept}_{pair.AcceptCustomerService}";
+                    if (!userCustomerServiceData.ContainsKey(key))
+                    {
+                        var Response = await _functions.BrokerandUser(pair.Accept!, pair.AcceptCustomerService!);
+                        userCustomerServiceData[key] = Response.Value;
+                    }
                 }
 
-                List<GetOrdersDTO> ordersDTOs = new List<GetOrdersDTO>();
-
-                foreach (var order in result)
+                // ✅ تحسين: استخدام Select بدلاً من foreach
+                var ordersDTOs = result.Select(order =>
                 {
-                    var typeOrder = await _db.typeOrders
-                        .Where(l => l.newOrderId == order.Id)
-                        .Select(l => l.typeOrder)
-                        .FirstOrDefaultAsync();
+                    var key = $"{order.Accept}_{order.AcceptCustomerService}";
+                    var Response = userCustomerServiceData.GetValueOrDefault(key);
 
-                    var value = await _db.values
-                        .Where(l => l.newOrderId == order.Id)
-                        .ToListAsync();
-
-                    var Response = await _functions.BrokerandUser(order.Accept!, order.AcceptCustomerService!);
-
-                    if (Response.Value.TryGetProperty("user", out JsonElement User) &&
-                        Response.Value.TryGetProperty("broker", out JsonElement CustomerService))
+                    if (Response.TryGetProperty("user", out JsonElement User) &&
+                        Response.TryGetProperty("broker", out JsonElement CustomerService))
                     {
                         if (User.TryGetProperty("fullName", out JsonElement UserName) &&
                             User.TryGetProperty("email", out JsonElement UserEmail) &&
                             CustomerService.TryGetProperty("fullName", out JsonElement CustomerServiceName) &&
                             CustomerService.TryGetProperty("email", out JsonElement CustomerServiceEmail))
                         {
-                            ordersDTOs.Add(new GetOrdersDTO
+                            return new GetOrdersDTO
                             {
                                 Id = order.Id.ToString(),
                                 statuOrder = order.statuOrder,
                                 Location = order.Location,
-                                typeOrder = typeOrder,
+                                typeOrder = order.numberOfTypeOrders?.FirstOrDefault()?.typeOrder,
                                 Date = order.Date!.Value.ToString("dddd, dd MMMM yyyy", culture),
                                 Email = UserEmail.ToString(),
                                 fullName = UserName.ToString(),
                                 CustomerServiceEmail = CustomerServiceEmail.ToString(),
                                 CustomerServiceName = CustomerServiceName.ToString(),
                                 BrokerID = order.Accept,
-                                Value = value.FirstOrDefault()?.Value ?? 0
-                            });
+                                Value = order.values?.FirstOrDefault()?.Value ?? 0
+                            };
                         }
                     }
-                }
 
-                var totalCount = ordersDTOs.Count;
-                var totalPages = (int)Math.Ceiling((double)totalCount / PageSize);
-
-                var paginatedOrders = ordersDTOs
-                    .Skip((Page - 1) * PageSize)
-                    .Take(PageSize)
-                    .ToList();
+                    return new GetOrdersDTO
+                    {
+                        Id = order.Id.ToString(),
+                        statuOrder = order.statuOrder,
+                        Location = order.Location,
+                        typeOrder = order.numberOfTypeOrders?.FirstOrDefault()?.typeOrder,
+                        Date = order.Date!.Value.ToString("dddd, dd MMMM yyyy", culture),
+                        BrokerID = order.Accept,
+                        Value = order.values?.FirstOrDefault()?.Value ?? 0
+                    };
+                }).ToList();
 
                 return Ok(new
                 {
                     TotalPages = totalPages,
                     Page = Page,
-                    totalOrders = totalCount,
-                    data = paginatedOrders
+                    totalUser = totalCount,
+                    data = ordersDTOs
                 });
             }
             catch (Exception)
@@ -204,64 +213,90 @@ namespace User.Controllers
                     NumberFormat = { DigitSubstitution = DigitShapes.NativeNational }
                 };
 
-                var result = await _db.newOrders
+                // ✅ تحسين: استخدام Include و AsNoTracking
+                var baseQuery = _db.newOrders
+                    .AsNoTracking()
+                    .Include(o => o.numberOfTypeOrders)
+                    .Include(o => o.values)
                     .Where(l => l.statuOrder == "تم التحويل")
+                    .OrderByDescending(o => o.Date);
+
+                var totalCount = await baseQuery.CountAsync();
+                var totalPages = (int)Math.Ceiling((double)totalCount / PageSize);
+
+                var result = await baseQuery
+                    .Skip((Page - 1) * PageSize)
+                    .Take(PageSize)
                     .ToListAsync();
 
-                List<GetOrdersDTO> ordersDTOs = new List<GetOrdersDTO>();
+                // ✅ تحسين: تجميع جميع الـ UserIDs و AccountIDs مرة واحدة
+                var userAccountPairs = result
+                    .Where(o => !string.IsNullOrEmpty(o.Accept) && !string.IsNullOrEmpty(o.AcceptAccount))
+                    .Select(o => new { o.Accept, o.AcceptAccount })
+                    .Distinct()
+                    .ToList();
 
-                foreach (var order in result)
+                var userAccountData = new Dictionary<string, JsonElement>();
+
+                foreach (var pair in userAccountPairs)
                 {
-                    var typeOrder = await _db.typeOrders
-                        .Where(l => l.newOrderId == order.Id)
-                        .FirstOrDefaultAsync();
+                    var key = $"{pair.Accept}_{pair.AcceptAccount}";
+                    if (!userAccountData.ContainsKey(key))
+                    {
+                        var Response = await _functions.BrokerandUser(pair.Accept!, pair.AcceptAccount!);
+                        userAccountData[key] = Response.Value;
+                    }
+                }
 
-                    var value = await _db.values
-                        .Where(l => l.newOrderId == order.Id)
-                        .ToListAsync();
+                // ✅ تحسين: استخدام Select بدلاً من foreach
+                var ordersDTOs = result.Select(order =>
+                {
+                    var key = $"{order.Accept}_{order.AcceptAccount}";
+                    var Response = userAccountData.GetValueOrDefault(key);
 
-                    var Response = await _functions.BrokerandUser(order.Accept!, order.AcceptAccount!);
-
-                    if (Response.Value.TryGetProperty("user", out JsonElement User) &&
-                        Response.Value.TryGetProperty("broker", out JsonElement Account))
+                    if (Response.TryGetProperty("user", out JsonElement User) &&
+                        Response.TryGetProperty("broker", out JsonElement Account))
                     {
                         if (User.TryGetProperty("fullName", out JsonElement UserName) &&
                             User.TryGetProperty("email", out JsonElement UserEmail) &&
                             Account.TryGetProperty("fullName", out JsonElement AccountName) &&
                             Account.TryGetProperty("email", out JsonElement AccountEmail))
                         {
-                            ordersDTOs.Add(new GetOrdersDTO
+                            return new GetOrdersDTO
                             {
                                 Id = order.Id.ToString(),
                                 statuOrder = order.statuOrder,
                                 Location = order.Location,
-                                typeOrder = typeOrder?.typeOrder,
+                                typeOrder = order.numberOfTypeOrders?.FirstOrDefault()?.typeOrder,
                                 Date = order.Date!.Value.ToString("dddd, dd MMMM yyyy", culture),
                                 Email = UserEmail.GetString(),
                                 fullName = UserName.GetString(),
                                 AccountEmail = AccountEmail.GetString(),
                                 AccountName = AccountName.GetString(),
                                 BrokerID = order.Accept,
-                                Value = value.FirstOrDefault()?.Value ?? 0
-                            });
+                                Value = order.values?.FirstOrDefault()?.Value ?? 0
+                            };
                         }
                     }
-                }
 
-                var totalCount = ordersDTOs.Count;
-                var totalPages = (int)Math.Ceiling((double)totalCount / PageSize);
-
-                var paginatedOrders = ordersDTOs
-                    .Skip((Page - 1) * PageSize)
-                    .Take(PageSize)
-                    .ToList();
+                    return new GetOrdersDTO
+                    {
+                        Id = order.Id.ToString(),
+                        statuOrder = order.statuOrder,
+                        Location = order.Location,
+                        typeOrder = order.numberOfTypeOrders?.FirstOrDefault()?.typeOrder,
+                        Date = order.Date!.Value.ToString("dddd, dd MMMM yyyy", culture),
+                        BrokerID = order.Accept,
+                        Value = order.values?.FirstOrDefault()?.Value ?? 0
+                    };
+                }).ToList();
 
                 return Ok(new
                 {
                     TotalPages = totalPages,
                     Page = Page,
-                    totalOrders = totalCount,
-                    data = paginatedOrders
+                    totalUser = totalCount,
+                    data = ordersDTOs
                 });
             }
             catch (Exception)
@@ -280,58 +315,68 @@ namespace User.Controllers
             {
                 const int PageSize = 10;
 
-                var result = await _db.newOrders
-                    .Where(l => l.statuOrder == "لم يتم التحويل")
-                    .ToListAsync();
-
                 CultureInfo culture = new CultureInfo("ar-SA")
                 {
                     DateTimeFormat = { Calendar = new GregorianCalendar() },
                     NumberFormat = { DigitSubstitution = DigitShapes.NativeNational }
                 };
 
-                List<GetOrdersDTO> ordersDTOs = new List<GetOrdersDTO>();
+                // ✅ تحسين: استخدام Include و AsNoTracking
+                var baseQuery = _db.newOrders
+                    .AsNoTracking()
+                    .Include(o => o.numberOfTypeOrders)
+                    .Where(l => l.statuOrder == "لم يتم التحويل")
+                    .OrderByDescending(o => o.Date);
 
-                foreach (var order in result)
+                var totalCount = await baseQuery.CountAsync();
+                var totalPages = (int)Math.Ceiling((double)totalCount / PageSize);
+
+                var result = await baseQuery
+                    .Skip((Page - 1) * PageSize)
+                    .Take(PageSize)
+                    .ToListAsync();
+
+                // ✅ تحسين: تجميع جميع الـ UserIDs مرة واحدة
+                var userIds = result.Select(o => o.UserId).Distinct().ToList();
+                var userData = new Dictionary<string, (string fullName, string phoneNumber)>();
+
+                foreach (var userId in userIds)
                 {
-                    var typeOrder = await _db.typeOrders
-                        .Where(l => l.newOrderId == order.Id)
-                        .FirstOrDefaultAsync();
-
-                    var Response = await _functions.SendAPI(order.UserId!);
-
-                    if (Response.HasValue &&
-                        Response.Value.TryGetProperty("fullName", out JsonElement fullName) &&
-                        Response.Value.TryGetProperty("phoneNumber", out JsonElement phoneNumber))
+                    if (!string.IsNullOrEmpty(userId))
                     {
-                        ordersDTOs.Add(new GetOrdersDTO
+                        var Response = await _functions.SendAPI(userId);
+                        if (Response.HasValue &&
+                            Response.Value.TryGetProperty("fullName", out JsonElement fullNameElement) &&
+                            Response.Value.TryGetProperty("phoneNumber", out JsonElement phoneNumberElement))
                         {
-                            Id = order.Id.ToString(),
-                            statuOrder = order.statuOrder,
-                            Location = order.Location,
-                            typeOrder = typeOrder?.typeOrder,
-                            Date = order.Date!.Value.ToString("dddd, dd MMMM yyyy", culture),
-                            fullName = fullName.GetString(),
-                            phoneNumber = phoneNumber.GetString(),
-                            BrokerID = order.Accept
-                        });
+                            userData[userId] = (fullNameElement.GetString() ?? "", phoneNumberElement.GetString() ?? "");
+                        }
                     }
                 }
 
-                var totalCount = ordersDTOs.Count;
-                var totalPages = (int)Math.Ceiling((double)totalCount / PageSize);
-
-                var paginatedOrders = ordersDTOs
-                    .Skip((Page - 1) * PageSize)
-                    .Take(PageSize)
-                    .ToList();
+                // ✅ تحسين: استخدام Select بدلاً من foreach
+                var ordersDTOs = result.Select(order =>
+                {
+                    var userInfo = userData.GetValueOrDefault(order.UserId!, ("", ""));
+                    return new GetOrdersDTO
+                    {
+                        Id = order.Id.ToString(),
+                        statuOrder = order.statuOrder,
+                        Location = order.Location,
+                        typeOrder = order.numberOfTypeOrders?.FirstOrDefault()?.typeOrder,
+                        Date = order.Date!.Value.ToString("dddd, dd MMMM yyyy", culture),
+                        fullName = userInfo.Item1,
+                        phoneNumber = userInfo.Item2,
+                        BrokerID = order.Accept
+                    };
+                }).ToList();
 
                 return Ok(new
                 {
                     TotalPages = totalPages,
                     Page = Page,
-                    totalOrders = totalCount,
-                    data = paginatedOrders
+                    totalUser = totalCount,
+                    data = ordersDTOs
                 });
             }
             catch (Exception)

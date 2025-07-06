@@ -132,7 +132,7 @@ namespace User.DTO
             }
         }
 
-        public async Task<JsonElement?> GetAllBroker()
+        public async Task<JsonElement?> GetAllBroker(int Page)
         {
             try
             {
@@ -148,7 +148,7 @@ namespace User.DTO
                 _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
                 // ✅ طلب الـ API
-                HttpResponseMessage response = await _httpClient.GetAsync("http://firstproject-service:9100/api/Get-Broker");
+                HttpResponseMessage response = await _httpClient.GetAsync($"http://firstproject-service:9100/api/Get-Broker/{Page}");
                 response.EnsureSuccessStatusCode();
 
                 string responseString = await response.Content.ReadAsStringAsync();

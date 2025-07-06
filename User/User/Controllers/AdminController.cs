@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
+using System.Text.Json;
 using User.ApplicationDbContext;
 using User.DTO;
 
@@ -27,12 +28,29 @@ namespace User.Controllers
             try
             {
                 var Response = await _functions.Admin();
-                var CountActiveOrders = _db.newOrders.Where(l => (l.statuOrder != "لم يتم التحويل" || l.statuOrder != "تم التحويل" || l.statuOrder != "ملغى" || l.statuOrder != "محذوفة") && l.Date!.Value.AddDays(7) > DateTime.Now).Count();
-                var CountDoneOrders = _db.newOrders.Where(l => l.statuOrder == "تم التحويل").Count();
+
+                // ✅ تحسين: استخدام استعلامات منفصلة و AsNoTracking
+                var CountActiveOrders = await _db.newOrders
+                    .AsNoTracking()
+                    .Where(l => (l.statuOrder != "لم يتم التحويل" || l.statuOrder != "تم التحويل" || l.statuOrder != "ملغى" || l.statuOrder != "محذوفة") && l.Date!.Value.AddDays(7) > DateTime.Now)
+                    .CountAsync();
+
+                var CountDoneOrders = await _db.newOrders
+                    .AsNoTracking()
+                    .Where(l => l.statuOrder == "تم التحويل")
+                    .CountAsync();
+
+                // ✅ تحسين: استخدام Join بدلاً من Any
                 var Exports = await _db.values
-                    .Where(v => v.Accept == true &&
-                           _db.newOrders.Any(o => o.Id == v.newOrderId && o.statuOrder == "تم التحويل"))
-                    .SumAsync(v => (double?)v.Value) ?? 0.0;
+                    .AsNoTracking()
+                    .Where(v => v.Accept == true)
+                    .Join(_db.newOrders,
+                        value => value.newOrderId,
+                        order => order.Id,
+                        (value, order) => new { value.Value, order.statuOrder })
+                    .Where(x => x.statuOrder == "تم التحويل")
+                    .SumAsync(x => (double?)x.Value) ?? 0.0;
+
                 return Ok(new { CountAllUsers = Response, CountActiveOrders = CountActiveOrders, CountDoneOrders = CountDoneOrders, Exports = Exports });
             }
             catch (Exception)
@@ -49,9 +67,18 @@ namespace User.Controllers
             {
                 const int PageSize = 10;
 
-                var Response = await _functions.GetAllBroker();
+                var Response = await _functions.GetAllBroker(Page);
+                if (!Response.Value.TryGetProperty("data", out var dataProperty))
+                {
+                    return BadRequest("الاستجابة لا تحتوي على خاصية 'data'");
+                }
 
-                var brokersList = Response.Value.EnumerateArray()
+                if (dataProperty.ValueKind != JsonValueKind.Array)
+                {
+                    return BadRequest("خاصية 'data' ليست من النوع Array");
+                }
+
+                var brokersList = dataProperty.EnumerateArray()
                     .Select(broker => new
                     {
                         FullName = broker.GetProperty("fullName").GetString(),
@@ -60,30 +87,35 @@ namespace User.Controllers
                     })
                     .ToList();
 
+
                 if (!brokersList.Any())
                 {
                     return Ok(new string[] { });
                 }
 
-                List<StatiticsDTO> statitics = new List<StatiticsDTO>();
+                // ✅ تحسين: جلب جميع الـ BrokerIDs مرة واحدة
+                var brokerIds = brokersList.Select(b => b.Id).ToList();
+                var brokerOrderCounts = await _db.newOrders
+                    .AsNoTracking()
+                    .Where(l => brokerIds.Contains(l.Accept!) && l.statuOrder == "تم التحويل")
+                    .GroupBy(l => l.Accept)
+                    .Select(g => new { BrokerID = g.Key, Count = g.Count() })
+                    .ToListAsync();
 
-                foreach (var broker in brokersList)
+                // ✅ تحسين: استخدام Select بدلاً من foreach
+                var statitics = brokersList.Select(broker =>
                 {
-                    var orders = await _db.newOrders
-                        .Where(l => l.Accept == broker.Id && l.statuOrder == "تم التحويل")
-                        .ToListAsync();
-
-                    statitics.Add(new StatiticsDTO
+                    var count = brokerOrderCounts.FirstOrDefault(b => b.BrokerID == broker.Id)?.Count ?? 0;
+                    return new StatiticsDTO
                     {
                         fullName = broker.FullName,
                         Email = broker.Email,
-                        Count = orders.Count
-                    });
-                }
+                        Count = count
+                    };
+                }).ToList();
 
                 var totalCount = statitics.Count;
                 var totalPages = (int)Math.Ceiling((double)totalCount / PageSize);
-
                 var paginatedStats = statitics
                     .OrderByDescending(s => s.Count) // ترتيب تنازلي حسب عدد الطلبات
                     .Skip((Page - 1) * PageSize)
@@ -94,14 +126,14 @@ namespace User.Controllers
                 {
                     TotalPages = totalPages,
                     Page = Page,
-                    totalBrokers = totalCount,
+                    totalUser = totalCount,
                     data = paginatedStats
                 });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError,
-                    new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
+                    new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " + ex.Message });
             }
         }
 
@@ -120,44 +152,32 @@ namespace User.Controllers
                     NumberFormat = { DigitSubstitution = DigitShapes.NativeNational }
                 };
 
-                var orders = await _db.newOrders
-                    .OrderByDescending(l => l.Date)
-                    .Select(l => new
-                    {
-                        l.Id,
-                        l.Location,
-                        l.statuOrder,
-                        l.Date,
-                    })
-                    .ToListAsync();
+                // ✅ تحسين: استخدام AsNoTracking و Pagination في قاعدة البيانات
+                var baseQuery = _db.newOrders
+                    .AsNoTracking()
+                    .OrderByDescending(l => l.Date);
 
-                List<GetOrdersDTO> ordersList = new List<GetOrdersDTO>();
-
-                foreach (var order in orders)
-                {
-                    ordersList.Add(new GetOrdersDTO
-                    {
-                        Id = order.Id.ToString(),
-                        Location = order.Location,
-                        statuOrder = order.statuOrder,
-                        Date = order.Date!.Value.ToString("dddd, dd MMMM yyyy", culture),
-                    });
-                }
-
-                var totalCount = ordersList.Count;
+                var totalCount = await baseQuery.CountAsync();
                 var totalPages = (int)Math.Ceiling((double)totalCount / PageSize);
 
-                var paginatedOrders = ordersList
+                var orders = await baseQuery
                     .Skip((Page - 1) * PageSize)
                     .Take(PageSize)
-                    .ToList();
+                    .Select(l => new GetOrdersDTO
+                    {
+                        Id = l.Id.ToString(),
+                        Location = l.Location,
+                        statuOrder = l.statuOrder,
+                        Date = l.Date!.Value.ToString("dddd, dd MMMM yyyy", culture),
+                    })
+                    .ToListAsync();
 
                 return Ok(new
                 {
                     TotalPages = totalPages,
                     Page = Page,
-                    totalOrders = totalCount,
-                    data = paginatedOrders
+                    totalUser = totalCount,
+                    data = orders
                 });
             }
             catch (Exception)
@@ -209,38 +229,33 @@ namespace User.Controllers
 
                 var sevenDaysAgo = DateTime.Now.Date.AddDays(-7);
 
-                var orders = await _db.newOrders
+                // ✅ تحسين: استخدام AsNoTracking و Pagination في قاعدة البيانات
+                var baseQuery = _db.newOrders
+                    .AsNoTracking()
                     .Where(l => l.Date != null && l.Date.Value.Date <= sevenDaysAgo)
-                    .OrderByDescending(l => l.Date)
-                    .ToListAsync();
+                    .OrderByDescending(l => l.Date);
 
-                List<GetOrdersDTO> ordersList = new List<GetOrdersDTO>();
+                var totalCount = await baseQuery.CountAsync();
+                var totalPages = (int)Math.Ceiling((double)totalCount / PageSize);
 
-                foreach (var order in orders)
-                {
-                    ordersList.Add(new GetOrdersDTO
+                var orders = await baseQuery
+                    .Skip((Page - 1) * PageSize)
+                    .Take(PageSize)
+                    .Select(order => new GetOrdersDTO
                     {
                         Id = order.Id.ToString(),
                         Location = order.Location,
                         statuOrder = order.statuOrder,
                         Date = order.Date!.Value.ToString("dddd, dd MMMM yyyy", culture),
-                    });
-                }
-
-                var totalCount = ordersList.Count;
-                var totalPages = (int)Math.Ceiling((double)totalCount / PageSize);
-
-                var paginatedOrders = ordersList
-                    .Skip((Page - 1) * PageSize)
-                    .Take(PageSize)
-                    .ToList();
+                    })
+                    .ToListAsync();
 
                 return Ok(new
                 {
                     TotalPages = totalPages,
                     Page = Page,
-                    totalOrders = totalCount,
-                    data = paginatedOrders
+                    totalUser = totalCount,
+                    data = orders
                 });
             }
             catch (Exception)

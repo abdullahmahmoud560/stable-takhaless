@@ -270,7 +270,10 @@ namespace User.Controllers
                     return BadRequest(new ApiResponse { Message = "لم يتم العثور على معرف المستخدم في بيانات الاعتماد" });
                 }
 
+                // ✅ تحسين: استخدام Include و AsNoTracking
                 var baseQuery = _db.newOrders
+                    .AsNoTracking()
+                    .Include(o => o.numberOfTypeOrders)
                     .Where(user => user.UserId == ID && user.statuOrder == "تم التحويل")
                     .OrderByDescending(order => order.Date);
 
@@ -287,29 +290,21 @@ namespace User.Controllers
                     return NotFound(new ApiResponse { Message = "لا توجد طلبات مرتبطة بهذا المستخدم" });
                 }
 
-                List<GetOrdersDTO> orders = new();
-
-                foreach (var order in pagedOrders)
+                // ✅ تحسين: استخدام Select بدلاً من foreach
+                List<GetOrdersDTO> orders = pagedOrders.Select(order => new GetOrdersDTO
                 {
-                    var typeOrder = await _db.typeOrders
-                        .FirstOrDefaultAsync(l => l.newOrderId == order.Id);
-
-                    orders.Add(new GetOrdersDTO
-                    {
-                        Location = order.Location ?? "غير معروف",
-                        typeOrder = typeOrder?.typeOrder ?? "غير معروف",
-                        statuOrder = order.statuOrder ?? "غير معروف",
-                        Id = order.Id.ToString(),
-                    });
-                }
+                    Location = order.Location ?? "غير معروف",
+                    typeOrder = order.numberOfTypeOrders?.FirstOrDefault()?.typeOrder ?? "غير معروف",
+                    statuOrder = order.statuOrder ?? "غير معروف",
+                    Id = order.Id.ToString(),
+                }).ToList();
 
                 return Ok(new
                 {
                     Page = Page,
-                    PageSize = pageSize,
                     TotalPages = totalPages,
-                    TotalCount = totalCount,
-                    Data = orders
+                    totalUser = totalCount,
+                    data = orders
                 });
             }
             catch (Exception)
@@ -335,7 +330,10 @@ namespace User.Controllers
                     return BadRequest("لم يتم العثور على معرف المستخدم");
                 }
 
+                // ✅ تحسين: استخدام Include بدلاً من استعلامات منفصلة
                 var query = _db.newOrders
+                               .AsNoTracking()
+                               .Include(o => o.numberOfTypeOrders)
                                .Where(l => l.UserId == ID && l.statuOrder == "قيد الإنتظار")
                                .OrderByDescending(l => l.Date);
 
@@ -349,25 +347,19 @@ namespace User.Controllers
                     return Ok(new string[] { });
                 }
 
-                List<GetOrdersDTO> getOrdersDTOs = new List<GetOrdersDTO>();
-
-                foreach (var order in orders)
+                // ✅ تحسين: استخدام البيانات المحملة مسبقاً
+                List<GetOrdersDTO> getOrdersDTOs = orders.Select(order => new GetOrdersDTO
                 {
-                    var typeOrder = await _db.typeOrders.FirstOrDefaultAsync(l => l.newOrderId == order.Id);
-                    getOrdersDTOs.Add(new GetOrdersDTO
-                    {
-                        statuOrder = "فى إنتظار تقديم العروض",
-                        Location = order.Location,
-                        Id = order.Id.ToString(),
-                        typeOrder = typeOrder?.typeOrder ?? "غير معروف"
-                    });
-                }
+                    statuOrder = "فى إنتظار تقديم العروض",
+                    Location = order.Location,
+                    Id = order.Id.ToString(),
+                    typeOrder = order.numberOfTypeOrders?.FirstOrDefault()?.typeOrder ?? "غير معروف"
+                }).ToList();
 
                 return Ok(new
                 {
                     Page = Page,
-                    PageSize = pageSize,
-                    TotalCount = totalCount,
+                    totalUser = totalCount,
                     TotalPages = totalPages,
                     Data = getOrdersDTOs
                 });
@@ -390,7 +382,10 @@ namespace User.Controllers
             {
                 const int pageSize = 10;
 
+                // ✅ تحسين: استخدام Include و AsNoTracking
                 var query = _db.newOrders
+                               .AsNoTracking()
+                               .Include(o => o.numberOfTypeOrders)
                                .Where(l => l.statuOrder == "قيد الإنتظار")
                                .OrderByDescending(l => l.Date);
 
@@ -404,11 +399,11 @@ namespace User.Controllers
                     return Ok(new string[] { });
                 }
 
+                // ✅ تحسين: استخدام Select بدلاً من foreach
                 List<GetOrdersDTO> getOrdersDTOs = new List<GetOrdersDTO>();
 
                 foreach (var order in orders)
                 {
-                    var typeOrder = await _db.typeOrders.FirstOrDefaultAsync(l => l.newOrderId == order.Id);
                     var Response = await _functions.SendAPI(order.UserId!);
 
                     if (Response.Value.TryGetProperty("fullName", out JsonElement fullName)
@@ -419,7 +414,7 @@ namespace User.Controllers
                             statuOrder = "في إنتظار المخلص لتقديم العروض",
                             Location = order.Location,
                             Id = order.Id.ToString(),
-                            typeOrder = typeOrder?.typeOrder ?? "غير معروف",
+                            typeOrder = order.numberOfTypeOrders?.FirstOrDefault()?.typeOrder ?? "غير معروف",
                             fullName = fullName.ToString(),
                             Email = Email.ToString()
                         });
@@ -429,8 +424,7 @@ namespace User.Controllers
                 return Ok(new
                 {
                     Page = Page,
-                    PageSize = pageSize,
-                    TotalCount = totalCount,
+                    totalUser = totalCount,
                     TotalPages = totalPages,
                     Data = getOrdersDTOs
                 });
@@ -516,8 +510,7 @@ namespace User.Controllers
                 return Ok(new
                 {
                     Page = Page,
-                    PageSize = pageSize,
-                    TotalCount = totalCount,
+                    totalUser = totalCount,
                     TotalPages = totalPages,
                     Data = result
                 });
