@@ -37,7 +37,7 @@ jobs:
           cd ${{ secrets.SERVER_PROJECT_PATH }}
           
           # Pull latest changes from git using username and token
-          git pull https://${{ secrets.SERVER_NAME }}:${{ secrets.SERVER_TOKEN }}@github.com/${{ github.repository }}.git ${{ github.ref_name }}
+          git pull https://${SERVER_NAME}:${SERVER_TOKEN}@github.com/Takhles-Technology/takhles-back-stable.git stable-performance
           
           # Stop existing containers
           docker compose down
