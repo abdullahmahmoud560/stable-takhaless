@@ -37,7 +37,7 @@ jobs:
           cd ${{ secrets.SERVER_PROJECT_PATH }}
           
           # Pull latest changes from git using username and token
-          git pull https://${{ secrets.SERVER_NAME }}:${{ secrets.SERVER_TOKEN }}@github.com/${{ github.repository }}.git stable-performance || git pull https://${{ secrets.SERVER_NAME }}:${{ secrets.SERVER_TOKEN }}@github.com/${{ github.repository }}.git main || git pull https://${{ secrets.SERVER_NAME }}:${{ secrets.SERVER_TOKEN }}@github.com/${{ github.repository }}.git master
+          git pull "https://${{ secrets.SERVER_NAME }}:${{ secrets.SERVER_TOKEN }}@github.com/${{ github.repository }}.git" stable-performance || git pull "https://${{ secrets.SERVER_NAME }}:${{ secrets.SERVER_TOKEN }}@github.com/${{ github.repository }}.git" main || git pull "https://${{ secrets.SERVER_NAME }}:${{ secrets.SERVER_TOKEN }}@github.com/${{ github.repository }}.git" master
           
           # Stop existing containers
           docker compose down
