@@ -17,15 +17,16 @@ namespace firstProject.Controllers
         private readonly DB _db;
         private readonly HttpClient _httpClient;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly Token_verfy _tokenVerifyService;
 
-
-        public SignupController(UserManager<User> userManager,EmailService emailService,DB db,IHttpContextAccessor httpContext,HttpClient httpClient)
+        public SignupController(UserManager<User> userManager, EmailService emailService, DB db, IHttpContextAccessor httpContext, HttpClient httpClient, Token_verfy tokenVerifyService)
         {
             _userManager = userManager;
             _emailService = emailService;
             _db = db;
             _httpContextAccessor = httpContext;
             _httpClient = httpClient;
+            _tokenVerifyService = tokenVerifyService;
         }
 
         //انشاء حساب للأفراد
@@ -34,10 +35,10 @@ namespace firstProject.Controllers
         {
             try
             {
-                var email = await _userManager.Users.AnyAsync(u => u.Email == registerDTO.Email);
-                var phoneNumber = await _userManager.Users.AnyAsync(u => u.PhoneNumber == registerDTO.phoneNumber);
+                var existingUser = await _userManager.Users
+                    .AnyAsync(u => u.Email == registerDTO.Email || u.PhoneNumber == registerDTO.phoneNumber);
 
-                if (email || phoneNumber)
+                if (existingUser)
                 {
                     return BadRequest(new ApiResponse { Message = "الرقم او البريد مستخدم بالفعل" });
                 }
@@ -60,7 +61,7 @@ namespace firstProject.Controllers
                 if (result.Succeeded)
                 {
                     await _userManager.AddToRoleAsync(user, "User");
-                    var verifyCode = await new Functions(_userManager, _db,_httpContextAccessor,_httpClient).GenerateVerifyCode(user, "VerifyUserEmail")!;
+                    var verifyCode = await new Functions(_userManager, _db, _httpContextAccessor, _httpClient).GenerateVerifyCode(user, "VerifyUserEmail")!;
                     var Body = string.Format(@"
 <!DOCTYPE html>
 <html lang=""ar"">
@@ -82,9 +83,8 @@ namespace firstProject.Controllers
     </div>
 </body>
 </html>", verifyCode);
-                    var send =   await _emailService.SendEmailAsync(user.Email!, "تأكيد بريدك الإلكتروني",Body);
-                    var tokenService = new Token_verfy(_userManager);
-                    var generatedToken = await tokenService.GenerateToken(user);
+                    var send = await _emailService.SendEmailAsync(user.Email!, "تأكيد بريدك الإلكتروني", Body);
+                    var generatedToken = await _tokenVerifyService.GenerateToken(user);
 
                     Response.Cookies.Append("token", generatedToken, new CookieOptions
                     {
@@ -96,7 +96,7 @@ namespace firstProject.Controllers
                         Path = "/"
                     });
 
-                    return Ok(new ApiResponse { Message = "تم تسجيل حساب الافراد بنجاح",Data= "VerifyUserEmail"});
+                    return Ok(new ApiResponse { Message = "تم تسجيل حساب الافراد بنجاح", Data = "VerifyUserEmail" });
                 }
 
                 return BadRequest(new ApiResponse { Message = "فشل في التسجيل" });
@@ -113,10 +113,10 @@ namespace firstProject.Controllers
         {
             try
             {
-                var emailExists = await _userManager.Users.AnyAsync(u => u.Email == companyDTO.Email!);
-                var phoneExists = await _userManager.Users.AnyAsync(u => u.PhoneNumber == companyDTO.phoneNumber);
+                var existingUser = await _userManager.Users
+                    .AnyAsync(u => u.Email == companyDTO.Email! || u.PhoneNumber == companyDTO.phoneNumber);
 
-                if (emailExists || phoneExists)
+                if (existingUser)
                 {
                     return BadRequest(new ApiResponse { Message = "الرقم او البريد مستخدم بالفعل" });
                 }
@@ -176,8 +176,7 @@ namespace firstProject.Controllers
 </body>
 </html>", verifyCode);
                     await _emailService.SendEmailAsync(user.Email!, "تأكيد بريدك الإلكتروني", Body);
-                    var tokenService = new Token_verfy(_userManager);
-                    var generatedToken = await tokenService.GenerateToken(user);
+                    var generatedToken = await _tokenVerifyService.GenerateToken(user);
 
                     Response.Cookies.Append("token", generatedToken, new CookieOptions
                     {
@@ -190,7 +189,7 @@ namespace firstProject.Controllers
                     });
 
 
-                    return Ok(new ApiResponse { Message = "تم تسجيل حساب الأعمال بنجاح",Data = "VerifyCompanyEmail" });
+                    return Ok(new ApiResponse { Message = "تم تسجيل حساب الأعمال بنجاح", Data = "VerifyCompanyEmail" });
                 }
 
                 return BadRequest(new ApiResponse { Message = "فشل في التسجيل" });
@@ -207,11 +206,11 @@ namespace firstProject.Controllers
         {
             try
             {
-               
-                var email = await _userManager.Users.AnyAsync(u => u.Email == brokerDTO.Email);
-                var phoneNumber = await _userManager.Users.AnyAsync(u => u.PhoneNumber == brokerDTO.phoneNumber);
 
-                if (email || phoneNumber)
+                var existingUser = await _userManager.Users
+                    .AnyAsync(u => u.Email == brokerDTO.Email || u.PhoneNumber == brokerDTO.phoneNumber);
+
+                if (existingUser)
                 {
                     return BadRequest(new ApiResponse { Message = "الرقم او البريد مستخدم بالفعل" });
                 }
@@ -272,8 +271,7 @@ namespace firstProject.Controllers
 </body>
 </html>", verifyCode);
                     await _emailService.SendEmailAsync(user.Email!, "تأكيد بريدك الإلكتروني", Body);
-                    var tokenService = new Token_verfy(_userManager);
-                    var generatedToken = await tokenService.GenerateToken(user);
+                    var generatedToken = await _tokenVerifyService.GenerateToken(user);
 
                     Response.Cookies.Append("token", generatedToken, new CookieOptions
                     {
@@ -284,8 +282,7 @@ namespace firstProject.Controllers
                         Domain = ".takhleesak.com",
                         Path = "/"
                     });
-
-                    return Ok(new ApiResponse { Message = "تم تسجيل حساب المخلصين بنجاح" ,Data = "VerifyBrokerEmail" });
+                    return Ok(new ApiResponse { Message = "تم تسجيل حساب المخلصين بنجاح", Data = "VerifyBrokerEmail" });
                 }
 
                 return BadRequest(new ApiResponse { Message = "فشل في التسجيل" });

@@ -33,17 +33,24 @@ namespace firstProject.Controllers
             try
             {
                 const int pageSize = 8;
-                var allUsers = await _userManager.Users.ToListAsync();
-                List<UserDTO> users = new List<UserDTO>();
 
+                // Get all users with pagination
+                var allUsers = await _userManager.Users
+                    .Skip((Page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync();
+
+                var usersWithRoles = new List<UserDTO>();
+
+                // Process users and get their roles
                 foreach (var user in allUsers)
                 {
                     var roles = await _userManager.GetRolesAsync(user);
                     var role = string.Join(", ", roles);
 
-                    if (role == "User" || role == "Company")
+                    if (role.Contains("User") || role.Contains("Company"))
                     {
-                        users.Add(new UserDTO
+                        usersWithRoles.Add(new UserDTO
                         {
                             Id = user.Id,
                             fullName = user.fullName,
@@ -56,22 +63,19 @@ namespace firstProject.Controllers
                     }
                 }
 
-                var totalUser = users.Count;
+                // Get total count efficiently
+                var totalUser = await _userManager.Users.CountAsync();
                 var totalPages = (int)Math.Ceiling((double)totalUser / pageSize);
-                var paginatedUsers = users
-                    .Skip((Page - 1) * pageSize)
-                    .Take(pageSize)
-                    .ToList();
 
                 return Ok(new
                 {
                     TotalPages = totalPages,
                     Page = Page,
-                    data = paginatedUsers,
-                    totalUser = totalUser
+                    data = usersWithRoles,
+                    totalUser = usersWithRoles.Count
                 });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق" });
             }
@@ -85,15 +89,22 @@ namespace firstProject.Controllers
             try
             {
                 const int PageSize = 8;
-                var allUsers = await _userManager.Users.ToListAsync();
-                List<UserDTO> brokers = new List<UserDTO>();
 
+                // Get all users with pagination
+                var allUsers = await _userManager.Users
+                    .Skip((Page - 1) * PageSize)
+                    .Take(PageSize)
+                    .ToListAsync();
+
+                var brokers = new List<UserDTO>();
+
+                // Process users and get their roles
                 foreach (var user in allUsers)
                 {
                     var roles = await _userManager.GetRolesAsync(user);
                     var role = string.Join(", ", roles);
 
-                    if (role == "Broker")
+                    if (role.Contains("Broker"))
                     {
                         brokers.Add(new UserDTO
                         {
@@ -108,19 +119,16 @@ namespace firstProject.Controllers
                     }
                 }
 
-                var totalCount = brokers.Count;
-                var totalPages = (int)Math.Ceiling((double)totalCount / PageSize);
-                var paginatedBrokers = brokers
-                    .Skip((Page - 1) * PageSize)
-                    .Take(PageSize)
-                    .ToList();
+                // Get total count efficiently
+                var totalUser = await _userManager.Users.CountAsync();
+                var totalPages = (int)Math.Ceiling((double)totalUser / PageSize);
 
                 return Ok(new
                 {
                     TotalPages = totalPages,
                     Page = Page,
-                    totalUser = totalCount,
-                    data = paginatedBrokers
+                    totalUser = brokers.Count,
+                    data = brokers
                 });
             }
             catch (Exception)
@@ -138,15 +146,22 @@ namespace firstProject.Controllers
             try
             {
                 const int PageSize = 8;
-                var allUsers = await _userManager.Users.ToListAsync();
-                List<UserDTO> customerServices = new List<UserDTO>();
 
+                // Get all users with pagination
+                var allUsers = await _userManager.Users
+                    .Skip((Page - 1) * PageSize)
+                    .Take(PageSize)
+                    .ToListAsync();
+
+                var customerServices = new List<UserDTO>();
+
+                // Process users and get their roles
                 foreach (var user in allUsers)
                 {
                     var roles = await _userManager.GetRolesAsync(user);
                     var role = string.Join(", ", roles);
 
-                    if (role == "CustomerService")
+                    if (role.Contains("CustomerService"))
                     {
                         customerServices.Add(new UserDTO
                         {
@@ -161,19 +176,16 @@ namespace firstProject.Controllers
                     }
                 }
 
-                var totalCount = customerServices.Count;
-                var totalPages = (int)Math.Ceiling((double)totalCount / PageSize);
-                var paginatedUsers = customerServices
-                    .Skip((Page - 1) * PageSize)
-                    .Take(PageSize)
-                    .ToList();
+                // Get total count efficiently
+                var totalUser = await _userManager.Users.CountAsync();
+                var totalPages = (int)Math.Ceiling((double)totalUser / PageSize);
 
                 return Ok(new
                 {
                     TotalPages = totalPages,
                     Page = Page,
-                    totalUser = totalCount,
-                    data = paginatedUsers
+                    totalUser = customerServices.Count,
+                    data = customerServices
                 });
             }
             catch (Exception)
@@ -190,15 +202,22 @@ namespace firstProject.Controllers
             try
             {
                 const int PageSize = 8;
-                var allUsers = await _userManager.Users.ToListAsync();
-                List<UserDTO> accounts = new List<UserDTO>();
 
+                // Get all users with pagination
+                var allUsers = await _userManager.Users
+                    .Skip((Page - 1) * PageSize)
+                    .Take(PageSize)
+                    .ToListAsync();
+
+                var accounts = new List<UserDTO>();
+
+                // Process users and get their roles
                 foreach (var user in allUsers)
                 {
                     var roles = await _userManager.GetRolesAsync(user);
                     var role = string.Join(", ", roles);
 
-                    if (role == "Account")
+                    if (role.Contains("Account"))
                     {
                         accounts.Add(new UserDTO
                         {
@@ -213,19 +232,16 @@ namespace firstProject.Controllers
                     }
                 }
 
-                var totalCount = accounts.Count;
-                var totalPages = (int)Math.Ceiling((double)totalCount / PageSize);
-                var paginatedAccounts = accounts
-                    .Skip((Page - 1) * PageSize)
-                    .Take(PageSize)
-                    .ToList();
+                // Get total count efficiently
+                var totalUser = await _userManager.Users.CountAsync();
+                var totalPages = (int)Math.Ceiling((double)totalUser / PageSize);
 
                 return Ok(new
                 {
                     TotalPages = totalPages,
                     Page = Page,
-                    totalUser = totalCount,
-                    data = paginatedAccounts
+                    totalUser = accounts.Count,
+                    data = accounts
                 });
             }
             catch (Exception)
@@ -242,15 +258,22 @@ namespace firstProject.Controllers
             try
             {
                 const int PageSize = 8;
-                var allUsers = await _userManager.Users.ToListAsync();
-                List<UserDTO> managers = new List<UserDTO>();
 
+                // Get all users with pagination
+                var allUsers = await _userManager.Users
+                    .Skip((Page - 1) * PageSize)
+                    .Take(PageSize)
+                    .ToListAsync();
+
+                var managers = new List<UserDTO>();
+
+                // Process users and get their roles
                 foreach (var user in allUsers)
                 {
                     var roles = await _userManager.GetRolesAsync(user);
                     var role = string.Join(", ", roles);
 
-                    if (role == "Manager")
+                    if (role.Contains("Manager"))
                     {
                         managers.Add(new UserDTO
                         {
@@ -265,19 +288,16 @@ namespace firstProject.Controllers
                     }
                 }
 
-                var totalCount = managers.Count;
-                var totalPages = (int)Math.Ceiling((double)totalCount / PageSize);
-                var paginatedManagers = managers
-                    .Skip((Page - 1) * PageSize)
-                    .Take(PageSize)
-                    .ToList();
+                // Get total count efficiently
+                var totalUser = await _userManager.Users.CountAsync();
+                var totalPages = (int)Math.Ceiling((double)totalUser / PageSize);
 
                 return Ok(new
                 {
                     TotalPages = totalPages,
                     Page = Page,
-                    totalUser = totalCount,
-                    data = paginatedManagers
+                    totalUser = managers.Count,
+                    data = managers
                 });
             }
             catch (Exception)
@@ -358,12 +378,16 @@ namespace firstProject.Controllers
             {
                 const int PageSize = 8;
 
+                // Get blocked users with pagination
                 var blackList = await _userManager.Users
                     .Where(u => u.isBlocked == true)
+                    .Skip((Page - 1) * PageSize)
+                    .Take(PageSize)
                     .ToListAsync();
 
-                List<UserDTO> users = new List<UserDTO>();
+                var users = new List<UserDTO>();
 
+                // Process users and get their roles
                 foreach (var user in blackList)
                 {
                     var roles = await _userManager.GetRolesAsync(user);
@@ -381,19 +405,19 @@ namespace firstProject.Controllers
                     });
                 }
 
-                var totalCount = users.Count;
+                // Get total count efficiently
+                var totalCount = await _userManager.Users
+                    .Where(u => u.isBlocked == true)
+                    .CountAsync();
+
                 var totalPages = (int)Math.Ceiling((double)totalCount / PageSize);
-                var paginatedUsers = users
-                    .Skip((Page - 1) * PageSize)
-                    .Take(PageSize)
-                    .ToList();
 
                 return Ok(new
                 {
                     TotalPages = totalPages,
                     Page = Page,
                     totalUser = totalCount,
-                    data = paginatedUsers
+                    data = users
                 });
             }
             catch (Exception)
@@ -491,9 +515,16 @@ namespace firstProject.Controllers
             try
             {
                 const int PageSize = 8;
-                var allUsers = await _userManager.Users.ToListAsync();
-                List<UserDTO> users = new List<UserDTO>();
 
+                // Get all users with pagination
+                var allUsers = await _userManager.Users
+                    .Skip((Page - 1) * PageSize)
+                    .Take(PageSize)
+                    .ToListAsync();
+
+                var users = new List<UserDTO>();
+
+                // Process users and get their roles
                 foreach (var user in allUsers)
                 {
                     var roles = await _userManager.GetRolesAsync(user);
@@ -523,19 +554,16 @@ namespace firstProject.Controllers
                     });
                 }
 
-                var totalCount = users.Count;
-                var totalPages = (int)Math.Ceiling((double)totalCount / PageSize);
-                var paginatedUsers = users
-                    .Skip((Page - 1) * PageSize)
-                    .Take(PageSize)
-                    .ToList();
+                // Get total count efficiently
+                var totalUser = await _userManager.Users.CountAsync();
+                var totalPages = (int)Math.Ceiling((double)totalUser / PageSize);
 
                 return Ok(new
                 {
                     TotalPages = totalPages,
                     Page = Page,
-                    totalUser = totalCount,
-                    data = paginatedUsers
+                    totalUser = users.Count,
+                    data = users
                 });
             }
             catch (Exception)
@@ -756,12 +784,16 @@ namespace firstProject.Controllers
                     NumberFormat = { DigitSubstitution = DigitShapes.NativeNational }
                 };
 
+                // Get active users with pagination
                 var activeUsers = await _userManager.Users
                     .Where(u => u.isActive == true && u.lastLogin!.Value.AddMonths(1) >= DateTime.UtcNow)
+                    .Skip((Page - 1) * PageSize)
+                    .Take(PageSize)
                     .ToListAsync();
 
-                List<ActiveUsersDTO> users = new List<ActiveUsersDTO>();
+                var users = new List<ActiveUsersDTO>();
 
+                // Process users and get their data
                 foreach (var user in activeUsers)
                 {
                     var response = await new SendApis(httpClient1, _httpContextAccessor).SendAPI(user.Id);
@@ -781,20 +813,19 @@ namespace firstProject.Controllers
                     }
                 }
 
-                var totalCount = users.Count;
-                var totalPages = (int)Math.Ceiling((double)totalCount / PageSize);
+                // Get total count efficiently
+                var totalCount = await _userManager.Users
+                    .Where(u => u.isActive == true && u.lastLogin!.Value.AddMonths(1) >= DateTime.UtcNow)
+                    .CountAsync();
 
-                var paginatedUsers = users
-                    .Skip((Page - 1) * PageSize)
-                    .Take(PageSize)
-                    .ToList();
+                var totalPages = (int)Math.Ceiling((double)totalCount / PageSize);
 
                 return Ok(new
                 {
                     TotalPages = totalPages,
                     Page = Page,
                     totalUser = totalCount,
-                    data = paginatedUsers
+                    data = users
                 });
             }
             catch (Exception)
@@ -819,12 +850,16 @@ namespace firstProject.Controllers
                     NumberFormat = { DigitSubstitution = DigitShapes.NativeNational }
                 };
 
+                // Get not active users with pagination
                 var notActiveUsers = await _userManager.Users
                     .Where(u => u.isActive == true && u.lastLogin!.Value.AddMonths(1) <= DateTime.UtcNow)
+                    .Skip((Page - 1) * PageSize)
+                    .Take(PageSize)
                     .ToListAsync();
 
-                List<ActiveUsersDTO> users = new List<ActiveUsersDTO>();
+                var users = new List<ActiveUsersDTO>();
 
+                // Process users and get their data
                 foreach (var user in notActiveUsers)
                 {
                     var response = await new SendApis(httpClient1, _httpContextAccessor).SendAPI(user.Id);
@@ -844,20 +879,20 @@ namespace firstProject.Controllers
                     }
                 }
 
-                var totalCount = users.Count;
-                var totalPages = (int)Math.Ceiling((double)totalCount / PageSize);
+                // Get total count efficiently
+                var totalCount = await _userManager.Users
+                    .Where(u => u.isActive == true && u.lastLogin!.Value.AddMonths(1) <= DateTime.UtcNow)
+                    .CountAsync();
 
-                var paginatedUsers = users
-                    .Skip((Page - 1) * PageSize)
-                    .Take(PageSize)
-                    .ToList();
+
+                var totalPages = (int)Math.Ceiling((double)totalCount / PageSize);
 
                 return Ok(new
                 {
                     TotalPages = totalPages,
                     Page = Page,
                     totalUser = totalCount,
-                    data = paginatedUsers
+                    data = users
                 });
             }
             catch (Exception)

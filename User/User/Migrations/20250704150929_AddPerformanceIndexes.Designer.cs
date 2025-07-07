@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using User.ApplicationDbContext;
 
@@ -10,9 +11,11 @@ using User.ApplicationDbContext;
 namespace User.Migrations
 {
     [DbContext(typeof(DB))]
-    partial class DBModelSnapshot : ModelSnapshot
+    [Migration("20250704150929_AddPerformanceIndexes")]
+    partial class AddPerformanceIndexes
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -32,7 +35,7 @@ namespace User.Migrations
                         .HasColumnType("longtext");
 
                     b.Property<string>("AcceptCustomerService")
-                        .HasColumnType("varchar(255)");
+                        .HasColumnType("longtext");
 
                     b.Property<string>("City")
                         .HasColumnType("longtext");
@@ -67,13 +70,13 @@ namespace User.Migrations
                         .HasColumnType("varchar(255)");
 
                     b.Property<string>("step1")
-                        .HasColumnType("varchar(255)");
+                        .HasColumnType("longtext");
 
                     b.Property<string>("step2")
-                        .HasColumnType("varchar(255)");
+                        .HasColumnType("longtext");
 
                     b.Property<string>("step3")
-                        .HasColumnType("varchar(255)");
+                        .HasColumnType("longtext");
 
                     b.Property<string>("zipCode")
                         .HasColumnType("longtext");
@@ -95,34 +98,13 @@ namespace User.Migrations
                     b.HasIndex("Accept", "statuOrder")
                         .HasDatabaseName("IX_NewOrders_Accept_Status");
 
-                    b.HasIndex("AcceptCustomerService", "Accept")
-                        .HasDatabaseName("IX_NewOrders_CustomerService_Accept");
-
                     b.HasIndex("UserId", "statuOrder")
                         .HasDatabaseName("IX_NewOrders_UserId_Status");
 
-                    b.HasIndex("statuOrder", "Accept")
-                        .HasDatabaseName("IX_NewOrders_Status_Accept");
-
                     b.HasIndex("statuOrder", "Date")
-                        .HasDatabaseName("IX_NewOrders_Status_Date_Extended");
+                        .HasDatabaseName("IX_NewOrders_Status_Date");
 
-                    b.HasIndex("statuOrder", "UserId")
-                        .HasDatabaseName("IX_NewOrders_Status_UserId");
-
-                    b.HasIndex("Accept", "statuOrder", "Date")
-                        .HasDatabaseName("IX_NewOrders_Accept_Status_Date");
-
-                    b.HasIndex("UserId", "statuOrder", "Date")
-                        .HasDatabaseName("IX_NewOrders_UserId_Status_Date");
-
-                    b.HasIndex("statuOrder", "Date", "Accept")
-                        .HasDatabaseName("IX_NewOrders_Status_Date_Accept_Composite");
-
-                    b.HasIndex("statuOrder", "step1", "step2", "step3")
-                        .HasDatabaseName("IX_NewOrders_Status_Steps");
-
-                    b.ToTable("newOrders", (string)null);
+                    b.ToTable("newOrders");
                 });
 
             modelBuilder.Entity("User.Model.NotesAccounting", b =>
@@ -144,7 +126,7 @@ namespace User.Migrations
 
                     b.HasIndex("newOrderId");
 
-                    b.ToTable("notesAccountings", (string)null);
+                    b.ToTable("notesAccountings");
                 });
 
             modelBuilder.Entity("User.Model.NotesCustomerService", b =>
@@ -173,7 +155,7 @@ namespace User.Migrations
                     b.HasIndex("newOrderId")
                         .HasDatabaseName("IX_NotesCustomerService_NewOrderId");
 
-                    b.ToTable("notesCustomerServices", (string)null);
+                    b.ToTable("notesCustomerServices");
                 });
 
             modelBuilder.Entity("User.Model.NumberOfTypeOrder", b =>
@@ -203,7 +185,7 @@ namespace User.Migrations
 
                     b.HasIndex("newOrderId");
 
-                    b.ToTable("typeOrders", (string)null);
+                    b.ToTable("typeOrders");
                 });
 
             modelBuilder.Entity("User.Model.PaymentDetails", b =>
@@ -232,7 +214,7 @@ namespace User.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("paymentDetails", (string)null);
+                    b.ToTable("paymentDetails");
                 });
 
             modelBuilder.Entity("User.Model.UploadFile", b =>
@@ -261,7 +243,7 @@ namespace User.Migrations
 
                     b.HasIndex("newOrderId");
 
-                    b.ToTable("uploadFiles", (string)null);
+                    b.ToTable("uploadFiles");
                 });
 
             modelBuilder.Entity("User.Model.Values", b =>
@@ -274,7 +256,7 @@ namespace User.Migrations
                         .HasColumnType("tinyint(1)");
 
                     b.Property<string>("BrokerID")
-                        .HasColumnType("varchar(255)");
+                        .HasColumnType("longtext");
 
                     b.Property<string>("JopID")
                         .HasColumnType("longtext");
@@ -290,19 +272,10 @@ namespace User.Migrations
                     b.HasIndex("Accept")
                         .HasDatabaseName("IX_Values_Accept");
 
-                    b.HasIndex("BrokerID")
-                        .HasDatabaseName("IX_Values_BrokerID");
-
                     b.HasIndex("newOrderId")
                         .HasDatabaseName("IX_Values_NewOrderId");
 
-                    b.HasIndex("BrokerID", "newOrderId")
-                        .HasDatabaseName("IX_Values_BrokerID_NewOrderId");
-
-                    b.HasIndex("newOrderId", "Accept")
-                        .HasDatabaseName("IX_Values_NewOrderId_Accept");
-
-                    b.ToTable("values", (string)null);
+                    b.ToTable("values");
                 });
 
             modelBuilder.Entity("User.Model.NotesAccounting", b =>
