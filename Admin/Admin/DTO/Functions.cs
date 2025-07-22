@@ -11,42 +11,81 @@ namespace Admin.DTO
 
         public Functions(HttpClient client, IHttpContextAccessor httpContextAccessor)
         {
-            _httpClient = client;
-            _httpContextAccessor = httpContextAccessor;
+            _httpClient = client ?? throw new ArgumentNullException(nameof(client));
+            _httpContextAccessor = httpContextAccessor ?? throw new ArgumentNullException(nameof(httpContextAccessor));
         }
-        public async Task<JsonElement?> SendAPI(string ID)
+
+        public async Task<ApiResult<JsonElement>> SendAPI(string id)
         {
             try
             {
-                // ✅ قراءة التوكن من الكوكي بدل الهيدر
-                string? token = _httpContextAccessor.HttpContext?.Request.Cookies["token"];
-
-                if (string.IsNullOrEmpty(token))
+                var token = GetTokenFromCookies();
+                if (!token.IsSuccess)
                 {
-                    return JsonDocument.Parse("{\"success\": false, \"message\": \"Missing Token in Cookies\"}").RootElement;
+                    return ApiResult<JsonElement>.Failure(token.ErrorMessage);
                 }
 
-                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                SetAuthorizationHeader(token.Data);
 
-                var requestData = new { ID = ID };
-                var jsonContent = new StringContent(JsonSerializer.Serialize(requestData), Encoding.UTF8, "application/json");
+                var requestData = new { ID = id };
+                var jsonContent = CreateJsonContent(requestData);
 
-                HttpResponseMessage response = await _httpClient.PostAsync("http://firstproject-service:9100/api/Select-Data", jsonContent);
-
+                var response = await _httpClient.PostAsync($"{Helpers.Constants.API_BASE_URL}/Select-Data", jsonContent);
                 response.EnsureSuccessStatusCode();
 
-                string responseString = await response.Content.ReadAsStringAsync();
-                return JsonDocument.Parse(responseString).RootElement;
+                var responseString = await response.Content.ReadAsStringAsync();
+                var jsonElement = JsonDocument.Parse(responseString).RootElement;
+
+                return ApiResult<JsonElement>.Success(jsonElement);
             }
             catch (HttpRequestException httpEx)
             {
-                return JsonDocument.Parse($"{{\"success\": false, \"message\": \"HTTP Request Error: {httpEx.Message}\"}}").RootElement;
+                return ApiResult<JsonElement>.Failure($"HTTP Request Error: {httpEx.Message}");
             }
             catch (Exception ex)
             {
-                return JsonDocument.Parse($"{{\"success\": false, \"message\": \"{ex.Message}\"}}").RootElement;
+                return ApiResult<JsonElement>.Failure(ex.Message);
             }
         }
 
+        private ApiResult<string> GetTokenFromCookies()
+        {
+            var token = _httpContextAccessor.HttpContext?.Request.Cookies[Helpers.Constants.TOKEN_COOKIE_NAME];
+            
+            if (string.IsNullOrEmpty(token))
+            {
+                return ApiResult<string>.Failure("Missing Token in Cookies");
+            }
+
+            return ApiResult<string>.Success(token);
+        }
+
+        private void SetAuthorizationHeader(string token)
+        {
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+
+        private StringContent CreateJsonContent<T>(T data)
+        {
+            var jsonString = JsonSerializer.Serialize(data);
+            return new StringContent(jsonString, Encoding.UTF8, "application/json");
+        }
+    }
+
+    public class ApiResult<T>
+    {
+        public bool IsSuccess { get; private set; }
+        public T? Data { get; private set; }
+        public string? ErrorMessage { get; private set; }
+
+        private ApiResult(bool isSuccess, T? data, string? errorMessage)
+        {
+            IsSuccess = isSuccess;
+            Data = data;
+            ErrorMessage = errorMessage;
+        }
+
+        public static ApiResult<T> Success(T data) => new(true, data, null);
+        public static ApiResult<T> Failure(string errorMessage) => new(false, default, errorMessage);
     }
 }

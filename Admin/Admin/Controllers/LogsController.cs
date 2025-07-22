@@ -1,11 +1,13 @@
 ﻿using Admin.ApplicationDbContext;
 using Admin.DTO;
+using Admin.Helpers;
 using Admin.Model;
+using Admin.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
-using System.Text.Json;
+using ILogService = Admin.Services.ILogService;
 
 namespace Admin.Controllers
 {
@@ -14,111 +16,107 @@ namespace Admin.Controllers
     public class LogsController : ControllerBase
     {
         private readonly DB _db;
-        private readonly Functions _functions;
+        private readonly ILogService _logService;
 
-
-        public LogsController(DB db,Functions functions)
+        public LogsController(DB db, ILogService logService)
         {
-            _db = db;
-            _functions = functions;
+            _db = db ?? throw new ArgumentNullException(nameof(db));
+            _logService = logService ?? throw new ArgumentNullException(nameof(logService));
         }
 
         [Authorize(Roles = "Admin,Manager")]
         [HttpGet("Logs/{NewOrderId}/{Page}")]
         public async Task<IActionResult> GetFilteredLogs(int NewOrderId, int Page)
         {
+            if (!DTO.Helpers.Validation.IsValidPage(Page))
+            {
+                return ErrorHandler.HandleValidationError("رقم الصفحة غير صحيح");
+            }
+
             try
             {
-                const int pageSize = 10;
-
-                var culture = new CultureInfo("ar-SA")
+                var paginationResult = await GetPaginatedLogs(NewOrderId, Page);
+                if (!paginationResult.IsSuccess)
                 {
-                    DateTimeFormat = { Calendar = new GregorianCalendar() },
-                    NumberFormat = { DigitSubstitution = DigitShapes.NativeNational }
-                };
-
-                var query = _db.Logs.Where(log => log.NewOrderId == NewOrderId).OrderByDescending(l => l.TimeStamp);
-
-                var totalCount = await query.CountAsync();
-                var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
-
-                var logs = await query
-                    .Skip((Page - 1) * pageSize)
-                    .Take(pageSize)
-                    .ToListAsync();
-
-                if (!logs.Any())
-                {
-                    return Ok(new { Page = Page, PageSize = pageSize, TotalCount = totalCount, TotalPages = totalPages, Data = new List<LogsDTO>() });
+                    return ErrorHandler.HandleException(new Exception(paginationResult.ErrorMessage));
                 }
 
-                var logsDTO = new List<LogsDTO>();
-
-                foreach (var log in logs)
-                {
-                    var response = await _functions.SendAPI(log.UserId!);
-
-                    if (response.HasValue &&
-                        response.Value.TryGetProperty("fullName", out JsonElement fullName) &&
-                        response.Value.TryGetProperty("email", out JsonElement email))
-                    {
-                        string formattedDate = log.TimeStamp.HasValue
-                            ? log.TimeStamp.Value.ToString("dddd, dd MMMM yyyy, hh:mm tt", culture)
-                            : string.Empty;
-
-                        logsDTO.Add(new LogsDTO
-                        {
-                            Message = log.Message,
-                            NewOrderId = log.NewOrderId,
-                            TimeStamp = formattedDate,
-                            fullName = fullName.GetString(),
-                            Email = email.GetString(),
-                            Notes = log.Notes
-                        });
-                    }
-                }
-
-                return Ok(new
-                {
-                    Page = Page,
-                    PageSize = pageSize,
-                    TotalCount = totalCount,
-                    TotalPages = totalPages,
-                    Data = logsDTO
-                });
+                return Ok(paginationResult.Data);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ، برجاء المحاولة لاحقًا" });
+                return ErrorHandler.HandleException(ex);
             }
         }
 
         [Authorize]
         [HttpPost("Add-Logs")]
-        public async Task<IActionResult> addLogs(AddLogs addLogs)
+        public async Task<IActionResult> AddLogs(AddLogs addLogs)
         {
-            if(addLogs == null)
+            if (addLogs == null)
             {
-                return BadRequest(new ApiResponse { Message = "البيانات المدخلة غير صحيحة" });
+                return ErrorHandler.HandleValidationError("البيانات المدخلة غير صحيحة");
             }
+
+            if (!DTO.Helpers.Validation.IsValidId(addLogs.UserId))
+            {
+                return ErrorHandler.HandleValidationError("معرف المستخدم غير صحيح");
+            }
+
             try
             {
-                var log = new Logs
-                {
-                    Message = addLogs.Message!,
-                    NewOrderId = addLogs.NewOrderId ?? 0,
-                    UserId = addLogs.UserId!,
-                    TimeStamp = addLogs.TimeStamp ?? DateTime.Now,
-                    Notes = addLogs.Notes!
-                };
+                var log = addLogs.ToLog();
                 _db.Logs.Add(log);
                 await _db.SaveChangesAsync();
-                return Ok(new ApiResponse { Message = "تم إضافة السجل بنجاح" });
+                
+                return Ok(ApiResponse.Success("تم إضافة السجل بنجاح"));
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ أثناء إضافة السجل" });
+                return ErrorHandler.HandleException(ex, "حدث خطأ أثناء إضافة السجل");
             }
+        }
+
+        private async Task<ApiResult<object>> GetPaginatedLogs(int newOrderId, int page)
+        {
+            var culture = DTO.Helpers.Culture.CreateArabicCulture();
+            var query = _db.Logs
+                .Where(log => log.NewOrderId == newOrderId)
+                .OrderByDescending(l => l.TimeStamp);
+
+            var totalCount = await query.CountAsync();
+            var pageSize = DTO.Helpers.Constants.DEFAULT_PAGE_SIZE;
+
+            var logs = await query
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            if (!logs.Any())
+            {
+                return ApiResult<object>.Success(PaginatedResponse<LogsDTO>.Create(page, pageSize, totalCount, new List<LogsDTO>()));
+            }
+
+            var logsDto = await ConvertLogsToDto(logs, culture);
+
+            return ApiResult<object>.Success(PaginatedResponse<LogsDTO>.Create(page, pageSize, totalCount, logsDto));
+        }
+
+        private async Task<List<LogsDTO>> ConvertLogsToDto(List<Logs> logs, CultureInfo culture)
+        {
+            var logsDto = new List<LogsDTO>();
+
+            foreach (var log in logs)
+            {
+                var userInfo = await _logService.GetUserInfoAsync(log.UserId!);
+                if (userInfo.IsSuccess)
+                {
+                    var formattedDate = DTO.Helpers.Culture.FormatDateTime(log.TimeStamp, culture);
+                    logsDto.Add(log.ToLogsDto(userInfo.Data.fullName, userInfo.Data.email, formattedDate));
+                }
+            }
+
+            return logsDto;
         }
     }
 }

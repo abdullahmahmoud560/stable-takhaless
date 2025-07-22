@@ -1,100 +1,80 @@
-﻿using Admin.ApplicationDbContext;
-using Admin.DTO;
+﻿using Admin.Configuration;
+using Admin.Extensions;
 using DotNetEnv;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
-
 
 var builder = WebApplication.CreateBuilder(args);
+
+// تحميل متغيرات البيئة
 Env.Load();
 
-builder.Services.AddDbContext<DB>(options =>
-{
-    options.UseMySQL(Environment.GetEnvironmentVariable("ConnectionStrings__Connection")!);
-});
+// تكوين الخدمات
+ConfigureServices(builder.Services);
 
-
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-
-
-// ✅ إضافة JWT Authentication
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-{
-    options.RequireHttpsMetadata = false;
-
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-
-        ValidIssuer = Environment.GetEnvironmentVariable("JWT__Issuer"),
-        ValidAudience = Environment.GetEnvironmentVariable("JWT__Audience"),
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Environment.GetEnvironmentVariable("JWT__SecretKey")!)),
-        RoleClaimType = "Role",
-        ClockSkew = TimeSpan.Zero
-    };
-
-    options.Events = new JwtBearerEvents
-    {
-        OnMessageReceived = context =>
-        {
-            var token = context.Request.Cookies["token"];
-            if (!string.IsNullOrEmpty(token))
-            {
-                context.Token = token;
-            }
-            return Task.CompletedTask;
-        }
-    };
-});
-
-builder.Services.AddHttpClient();
-builder.Services.AddScoped<Functions>();
-builder.Services.AddHttpContextAccessor();
-
-var MyCors = "MyCors";  
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy(name: MyCors,
-        policy =>
-        {
-            policy.WithOrigins("https://test.takhleesak.com")
-                  .AllowCredentials()
-                  .AllowAnyHeader()
-                  .AllowAnyMethod();
-        });
-});
 var app = builder.Build();
 
-// ✅ 2. تفعيل Swagger (عادةً يستخدم في التطوير أو لو حابب تعرض واجهة الـ API)
-app.UseSwagger();
-app.UseSwaggerUI();
+// تكوين Middleware
+ConfigureMiddleware(app);
 
-// ✅ 3. إجبار التحويل لـ HTTPS (اختياري لكن مهم للأمان)
-app.UseHttpsRedirection();
-
-// ✅ 4. تفعيل CORS للسماح للطلبات من مصادر معينة
-app.UseCors("MyCors");
-
-// ✅ 5. إضافة Authentication (يقرأ التوكن من الكوكي أو الهيدر)
-app.UseAuthentication();
-
-// ✅ 6. إضافة Authorization (يتحقق من صلاحيات الدور)
-app.UseAuthorization();
-
-// ✅ 7. ربط الـ Controllers مع الـ Endpoints
 app.MapControllers();
-
-// ✅ 8. تشغيل التطبيق
 app.Run();
+
+
+static void ConfigureServices(IServiceCollection services)
+{
+    // تكوين قاعدة البيانات
+    ConfigureDatabase(services);
+    
+    // تكوين المصادقة والتفويض
+    ConfigureAuthentication(services);
+    
+    // تكوين CORS
+    ConfigureCors(services);
+    
+    // إضافة الخدمات الأساسية
+    services.AddApplicationServices();
+    services.AddControllers();
+    services.AddEndpointsApiExplorer();
+    services.AddSwaggerGen();
+}
+
+
+static void ConfigureDatabase(IServiceCollection services)
+{
+    var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__Connection") 
+        ?? throw new InvalidOperationException("Connection string is not configured");
+    
+    services.AddDatabaseContext(connectionString);
+}
+
+
+static void ConfigureAuthentication(IServiceCollection services)
+{
+    var jwtConfig = new JwtConfiguration
+    {
+        Issuer = Environment.GetEnvironmentVariable("JWT__Issuer") 
+            ?? throw new InvalidOperationException("JWT Issuer is not configured"),
+        Audience = Environment.GetEnvironmentVariable("JWT__Audience") 
+            ?? throw new InvalidOperationException("JWT Audience is not configured"),
+        SecretKey = Environment.GetEnvironmentVariable("JWT__SecretKey") 
+            ?? throw new InvalidOperationException("JWT Secret Key is not configured")
+    };
+    
+    services.AddJwtAuthentication(jwtConfig);
+}
+
+static void ConfigureCors(IServiceCollection services)
+{
+    var corsConfig = new CorsConfiguration
+    {
+        PolicyName = "MyCors",
+        AllowedOrigins = new[] { "https://test.takhleesak.com" },
+        AllowCredentials = true
+    };
+    
+    services.AddCorsPolicy(corsConfig);
+}
+
+static void ConfigureMiddleware(IApplicationBuilder app)
+{
+    app.UseCustomMiddleware("MyCors");
+}
