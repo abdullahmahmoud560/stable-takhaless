@@ -36,8 +36,8 @@ jobs:
           # Navigate to project directory
           cd ${{ secrets.SERVER_PROJECT_PATH }}
           
-          # Pull latest changes from git
-          git pull origin stable-performance || git pull origin main || git pull origin master
+          # Pull latest changes from git repo and token
+          git pull https://${{ secrets.SERVER_NAME }}:${{ secrets.SERVER_TOKEN }}@github.com/${{ github.repository }}.git ${{ github.ref_name }}
           
           # Stop existing containers
           docker compose down
