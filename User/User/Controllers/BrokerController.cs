@@ -43,8 +43,8 @@ namespace User.Controllers
             try
             {
                 const int PageSize = 10;
+                var culture = ArabicCulture; // ✅ الحل لتفادي التحذير
 
-                // ✅ تحسين: استخدام AsNoTracking و Projection مباشرة
                 var query = _db.newOrders
                     .AsNoTracking()
                     .Where(order => order.Date.HasValue &&
@@ -60,7 +60,6 @@ namespace User.Controllers
                     return NotFound(new ApiResponse { Message = "لا توجد طلبات قيد الإنتظار" });
                 }
 
-                // ✅ تحسين: استخدام Projection مباشرة مع Pagination
                 var ordersList = await query
                     .Skip((Page - 1) * PageSize)
                     .Take(PageSize)
@@ -68,7 +67,7 @@ namespace User.Controllers
                     {
                         Id = order.Id.ToString(),
                         Location = order.Location,
-                        Date = order.Date!.Value.ToString("dddd, dd MMMM yyyy", ArabicCulture),
+                        Date = order.Date!.Value.ToString("dddd, dd MMMM yyyy", culture),
                     })
                     .ToListAsync();
 
@@ -80,12 +79,13 @@ namespace User.Controllers
                     data = ordersList
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError,
-                    new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق" ,Data = ex.Message});
+                    new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق"});
             }
         }
+
 
         // عرض جميع التفاصيل لعرض معين
         [Authorize(Roles = "Broker,User,Admin,Manager,Company")]
