@@ -80,10 +80,10 @@ namespace User.Controllers
                     data = ordersList
                 });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError,
-                    new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق " });
+                    new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق" ,Data = ex.Message});
             }
         }
 
