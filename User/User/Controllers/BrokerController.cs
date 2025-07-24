@@ -867,7 +867,7 @@ namespace User.Controllers
                         .Select(g => new { Status = g.Key, Count = g.Count() })
                         .ToListAsync();
 
-                    var currentOrdersAdmin = adminStats.FirstOrDefault(s => s.Status == "تحت الإجراء")?.Count ?? 0;
+                    var currentOrdersAdmin = adminStats.FirstOrDefault(s => s.Status != "قيد الإنتظار" && s.Status !="تم التحويل")?.Count ?? 0;
                     var applyOrdersAdmin = adminStats.FirstOrDefault(s => s.Status == "قيد الإنتظار")?.Count ?? 0;
                     var customerServiceOrdersAdmin = adminStats.FirstOrDefault(s => s.Status == "لم يتم التنفيذ")?.Count ?? 0;
 
