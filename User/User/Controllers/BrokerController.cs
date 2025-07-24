@@ -894,7 +894,7 @@ namespace User.Controllers
                     .Select(g => new { Status = g.Key, Count = g.Count() })
                     .ToListAsync();
 
-                var currentOrders = brokerStats.FirstOrDefault(s => s.Status != "قيد الإنتظار" || s.Status != "تم التحويل")?.Count ?? 0;
+                var currentOrders = brokerStats.FirstOrDefault(s => s.Status != "قيد الإنتظار" && s.Status != "تم التحويل")?.Count ?? 0;
                 var applyOrders = brokerStats.FirstOrDefault(s => s.Status == "قيد الإنتظار")?.Count ?? 0;
 
                 var customerServiceOrders = await _db.values.Where(v => v.BrokerID == ID).GroupBy(v => v.newOrderId).Select(g => g.First().newOrderId) // استخراج newOrderId فقط
