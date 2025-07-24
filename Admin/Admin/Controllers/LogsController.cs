@@ -88,6 +88,7 @@ namespace Admin.Controllers
             var pageSize = DTO.Helpers.Constants.DEFAULT_PAGE_SIZE;
 
             var logs = await query
+                .OrderBy(log => log.TimeStamp)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
