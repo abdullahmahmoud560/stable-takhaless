@@ -102,10 +102,10 @@ jobs:
           git pull https://${{ secrets.SERVER_NAME_dev }}:${{ secrets.SERVER_TOKEN_dev }}@github.com/${{ github.repository }}.git ${{ github.ref_name }}
           
           # Stop existing containers with development environment
-          docker-compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.dev down
+          docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.dev down
           
           # Build and start containers with development environment
-          docker-compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.dev up --build -d
+          docker compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.dev up --build -d
           
           # Wait for services to start
           sleep 30
