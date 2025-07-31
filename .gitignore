@@ -5,3 +5,7 @@ publish/
 *.sln
 *.user
 *.vs
+
+# Environment files
+.env         # Production environment file (contains secrets)
+# .env.dev is intentionally NOT ignored (safe for development)

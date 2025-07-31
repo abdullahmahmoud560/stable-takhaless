@@ -1,3 +1,9 @@
+# ==================================================
+# Takhlees Tech Backend - Docker Compose Configuration
+# ==================================================
+# Production Docker Compose configuration with environment variables
+# Use with: docker-compose --env-file .env up -d
+
 services:
   # ========================================
   # MySQL Databases
@@ -5,109 +11,134 @@ services:
   
   # Admin Database
   admin-db:
-    image: mysql:8.0
-    container_name: admin-db
+    image: mysql:${MYSQL_VERSION:-8.0}
+    container_name: ${ADMIN_DB_CONTAINER_NAME:-admin-db}
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: root_admin_pass
-      MYSQL_DATABASE: u676203545_logs
-      MYSQL_USER: admin_user
-      MYSQL_PASSWORD: admin_pass
+      MYSQL_ROOT_PASSWORD: ${ADMIN_DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${ADMIN_DB_NAME}
+      MYSQL_USER: ${ADMIN_DB_USER}
+      MYSQL_PASSWORD: ${ADMIN_DB_PASSWORD}
     volumes:
       - admin_db_data:/var/lib/mysql
       - ./mysql-init:/docker-entrypoint-initdb.d
     ports:
-      - "3307:3306"
+      - "${ADMIN_DB_PORT:-3307}:3306"
     networks:
       - takhlees-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
 
   # CustomerService Database
   customerservice-db:
-    image: mysql:8.0
-    container_name: customerservice-db
+    image: mysql:${MYSQL_VERSION:-8.0}
+    container_name: ${CUSTOMERSERVICE_DB_CONTAINER_NAME:-customerservice-db}
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: root_customerservice_pass
-      MYSQL_DATABASE: u676203545_CustomerServic
-      MYSQL_USER: customerservice_user
-      MYSQL_PASSWORD: customerservice_pass
+      MYSQL_ROOT_PASSWORD: ${CUSTOMERSERVICE_DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${CUSTOMERSERVICE_DB_NAME}
+      MYSQL_USER: ${CUSTOMERSERVICE_DB_USER}
+      MYSQL_PASSWORD: ${CUSTOMERSERVICE_DB_PASSWORD}
     volumes:
       - customerservice_db_data:/var/lib/mysql
     ports:
-      - "3308:3306"
+      - "${CUSTOMERSERVICE_DB_PORT:-3308}:3306"
     networks:
       - takhlees-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
 
   # FirstProject Database
   firstproject-db:
-    image: mysql:8.0
-    container_name: firstproject-db
+    image: mysql:${MYSQL_VERSION:-8.0}
+    container_name: ${FIRSTPROJECT_DB_CONTAINER_NAME:-firstproject-db}
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: root_firstproject_pass
-      MYSQL_DATABASE: u676203545_mainData
-      MYSQL_USER: firstproject_user
-      MYSQL_PASSWORD: firstproject_pass
+      MYSQL_ROOT_PASSWORD: ${FIRSTPROJECT_DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${FIRSTPROJECT_DB_NAME}
+      MYSQL_USER: ${FIRSTPROJECT_DB_USER}
+      MYSQL_PASSWORD: ${FIRSTPROJECT_DB_PASSWORD}
     volumes:
       - firstproject_db_data:/var/lib/mysql
     ports:
-      - "3309:3306"
+      - "${FIRSTPROJECT_DB_PORT:-3309}:3306"
     networks:
       - takhlees-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
 
   # User Database
   user-db:
-    image: mysql:8.0
-    container_name: user-db
+    image: mysql:${MYSQL_VERSION:-8.0}
+    container_name: ${USER_DB_CONTAINER_NAME:-user-db}
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: root_user_pass
-      MYSQL_DATABASE: u676203545_Orders
-      MYSQL_USER: user_user
-      MYSQL_PASSWORD: user_pass
+      MYSQL_ROOT_PASSWORD: ${USER_DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${USER_DB_NAME}
+      MYSQL_USER: ${USER_DB_USER}
+      MYSQL_PASSWORD: ${USER_DB_PASSWORD}
     volumes:
       - user_db_data:/var/lib/mysql
     ports:
-      - "3310:3306"
+      - "${USER_DB_PORT:-3310}:3306"
     networks:
       - takhlees-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
 
   # HangFire Database
   hangfire-db:
-    image: mysql:8.0
-    container_name: hangfire-db
+    image: mysql:${MYSQL_VERSION:-8.0}
+    container_name: ${HANGFIRE_DB_CONTAINER_NAME:-hangfire-db}
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: root_hangfire_pass
-      MYSQL_DATABASE: u676203545_HangFire
-      MYSQL_USER: hangfire_user
-      MYSQL_PASSWORD: hangfire_pass
+      MYSQL_ROOT_PASSWORD: ${HANGFIRE_DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${HANGFIRE_DB_NAME}
+      MYSQL_USER: ${HANGFIRE_DB_USER}
+      MYSQL_PASSWORD: ${HANGFIRE_DB_PASSWORD}
     volumes:
       - hangfire_db_data:/var/lib/mysql
     ports:
-      - "3311:3306"
+      - "${HANGFIRE_DB_PORT:-3311}:3306"
     networks:
       - takhlees-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
 
   # ========================================
   # phpMyAdmin
   # ========================================
   phpmyadmin:
     image: phpmyadmin/phpmyadmin:latest
-    container_name: phpmyadmin
+    container_name: ${PHPMYADMIN_CONTAINER_NAME:-phpmyadmin}
     restart: unless-stopped
     environment:
       PMA_ARBITRARY: 1
-      PMA_HOSTS: admin-db,customerservice-db,firstproject-db,user-db,hangfire-db
-      MYSQL_ROOT_PASSWORD: admin_root_pass
+      PMA_HOSTS: ${ADMIN_DB_CONTAINER_NAME:-admin-db},${CUSTOMERSERVICE_DB_CONTAINER_NAME:-customerservice-db},${FIRSTPROJECT_DB_CONTAINER_NAME:-firstproject-db},${USER_DB_CONTAINER_NAME:-user-db},${HANGFIRE_DB_CONTAINER_NAME:-hangfire-db}
+      MYSQL_ROOT_PASSWORD: ${PHPMYADMIN_ROOT_PASSWORD}
     ports:
-      - "8080:80"
+      - "${PHPMYADMIN_PORT:-8080}:80"
     depends_on:
-      - admin-db
-      - customerservice-db
-      - firstproject-db
-      - user-db
-      - hangfire-db
+      admin-db:
+        condition: service_healthy
+      customerservice-db:
+        condition: service_healthy
+      firstproject-db:
+        condition: service_healthy
+      user-db:
+        condition: service_healthy
+      hangfire-db:
+        condition: service_healthy
     networks:
       - takhlees-network
 
@@ -120,14 +151,41 @@ services:
     build:
       context: .
       dockerfile: Admin/Dockerfile
-    container_name: admin-service
+    container_name: ${ADMIN_SERVICE_CONTAINER_NAME:-admin-service}
     restart: unless-stopped
-    env_file:
-      - Admin/environment.env
+    environment:
+      # Application Configuration
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      ASPNETCORE_URLS: http://+:80
+      
+      # Database Configuration
+      ConnectionStrings__DefaultConnection: Server=${ADMIN_DB_CONTAINER_NAME:-admin-db};Database=${ADMIN_DB_NAME};User=${ADMIN_DB_USER};Password=${ADMIN_DB_PASSWORD};SslMode=Preferred;
+      ConnectionStrings__Connection: Server=${ADMIN_DB_CONTAINER_NAME:-admin-db};Database=${ADMIN_DB_NAME};User=${ADMIN_DB_USER};Password=${ADMIN_DB_PASSWORD};
+      
+      # JWT Settings
+      JWT__Issuer: ${JWT_ISSUER}
+      JWT__Audience: ${JWT_AUDIENCE}
+      JWT__SecretKey: ${JWT_SECRET_KEY}
+      
+      # Admin Configuration
+      Admin__SuperAdminEmail: ${ADMIN_SUPER_ADMIN_EMAIL}
+      Admin__SuperAdminPassword: ${ADMIN_SUPER_ADMIN_PASSWORD}
+      Admin__DefaultPageSize: ${ADMIN_DEFAULT_PAGE_SIZE:-20}
+      Admin__MaxPageSize: ${ADMIN_MAX_PAGE_SIZE:-100}
+      
+      # External Services URLs
+      FirstProjectService__BaseUrl: http://${FIRSTPROJECT_SERVICE_CONTAINER_NAME:-firstproject-service}:${FIRSTPROJECT_SERVICE_INTERNAL_PORT:-9100}
+      UserService__BaseUrl: http://${USER_SERVICE_CONTAINER_NAME:-user-service}:80
+      CustomerService__BaseUrl: http://${CUSTOMERSERVICE_SERVICE_CONTAINER_NAME:-customerservice-service}:80
+      
+      # CORS Configuration
+      CORS__AllowedOrigins: ${CORS_ALLOWED_ORIGINS}
+      CORS__AllowCredentials: ${CORS_ALLOW_CREDENTIALS:-true}
     ports:
-      - "5001:80"
+      - "${ADMIN_SERVICE_PORT:-5001}:80"
     depends_on:
-      - admin-db
+      admin-db:
+        condition: service_healthy
     volumes:
       - admin_logs:/app/logs
     networks:
@@ -138,14 +196,30 @@ services:
     build:
       context: .
       dockerfile: CustomerService/Dockerfile
-    container_name: customerservice-service
+    container_name: ${CUSTOMERSERVICE_SERVICE_CONTAINER_NAME:-customerservice-service}
     restart: unless-stopped
-    env_file:
-      - CustomerService/environment.env
+    environment:
+      # Application Configuration
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      ASPNETCORE_URLS: http://+:80
+      
+      # Database Configuration
+      ConnectionStrings__DefaultConnection: Server=${CUSTOMERSERVICE_DB_CONTAINER_NAME:-customerservice-db};Database=${CUSTOMERSERVICE_DB_NAME};User=${CUSTOMERSERVICE_DB_USER};Password=${CUSTOMERSERVICE_DB_PASSWORD};SslMode=Preferred;
+      ConnectionStrings__Connection: Server=${CUSTOMERSERVICE_DB_CONTAINER_NAME:-customerservice-db};Database=${CUSTOMERSERVICE_DB_NAME};User=${CUSTOMERSERVICE_DB_USER};Password=${CUSTOMERSERVICE_DB_PASSWORD};
+      
+      # JWT Settings
+      JWT__Issuer: ${JWT_ISSUER}
+      JWT__Audience: ${JWT_AUDIENCE}
+      JWT__SecretKey: ${JWT_SECRET_KEY}
+      
+      # CORS Configuration
+      CORS__AllowedOrigins: ${CORS_ALLOWED_ORIGINS}
+      CORS__AllowCredentials: ${CORS_ALLOW_CREDENTIALS:-true}
     ports:
-      - "5002:80"
+      - "${CUSTOMERSERVICE_SERVICE_PORT:-5002}:80"
     depends_on:
-      - customerservice-db
+      customerservice-db:
+        condition: service_healthy
     volumes:
       - customerservice_uploads:/app/uploads
     networks:
@@ -156,16 +230,31 @@ services:
     build:
       context: .
       dockerfile: firstProject/Dockerfile
-    container_name: firstproject-service
+    container_name: ${FIRSTPROJECT_SERVICE_CONTAINER_NAME:-firstproject-service}
     restart: unless-stopped
-    env_file:
-      - firstProject/environment.env
     environment:
-      - PORT=9100
+      # Application Configuration
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      ASPNETCORE_URLS: http://+:${FIRSTPROJECT_SERVICE_INTERNAL_PORT:-9100}
+      PORT: ${FIRSTPROJECT_SERVICE_INTERNAL_PORT:-9100}
+      
+      # Database Configuration
+      ConnectionStrings__DefaultConnection: Server=${FIRSTPROJECT_DB_CONTAINER_NAME:-firstproject-db};Database=${FIRSTPROJECT_DB_NAME};User=${FIRSTPROJECT_DB_USER};Password=${FIRSTPROJECT_DB_PASSWORD};SslMode=Preferred;
+      ConnectionStrings__Connection: Server=${FIRSTPROJECT_DB_CONTAINER_NAME:-firstproject-db};Database=${FIRSTPROJECT_DB_NAME};User=${FIRSTPROJECT_DB_USER};Password=${FIRSTPROJECT_DB_PASSWORD};
+      
+      # JWT Settings
+      JWT__Issuer: ${JWT_ISSUER}
+      JWT__Audience: ${JWT_AUDIENCE}
+      JWT__SecretKey: ${JWT_SECRET_KEY}
+      
+      # CORS Configuration
+      CORS__AllowedOrigins: ${CORS_ALLOWED_ORIGINS}
+      CORS__AllowCredentials: ${CORS_ALLOW_CREDENTIALS:-true}
     ports:
-      - "9100:9100"
+      - "${FIRSTPROJECT_SERVICE_PORT:-9100}:${FIRSTPROJECT_SERVICE_INTERNAL_PORT:-9100}"
     depends_on:
-      - firstproject-db
+      firstproject-db:
+        condition: service_healthy
     networks:
       - takhlees-network
 
@@ -174,15 +263,46 @@ services:
     build:
       context: .
       dockerfile: User/Dockerfile
-    container_name: user-service
+    container_name: ${USER_SERVICE_CONTAINER_NAME:-user-service}
     restart: unless-stopped
-    env_file:
-      - User/environment.env
+    environment:
+      # Application Configuration
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      ASPNETCORE_URLS: http://+:80
+      
+      # Database Configuration
+      ConnectionStrings__DefaultConnection: Server=${USER_DB_CONTAINER_NAME:-user-db};Database=${USER_DB_NAME};User=${USER_DB_USER};Password=${USER_DB_PASSWORD};SslMode=Preferred;
+      ConnectionStrings__Connection: Server=${USER_DB_CONTAINER_NAME:-user-db};Database=${USER_DB_NAME};User=${USER_DB_USER};Password=${USER_DB_PASSWORD};
+      ConnectionStrings__HangeFire: Server=${HANGFIRE_DB_CONTAINER_NAME:-hangfire-db};Database=${HANGFIRE_DB_NAME};User=${HANGFIRE_DB_USER};Password=${HANGFIRE_DB_PASSWORD};
+      
+      # JWT Settings
+      JWT__Issuer: ${JWT_ISSUER}
+      JWT__Audience: ${JWT_AUDIENCE}
+      JWT__SecretKey: ${JWT_SECRET_KEY}
+      
+      # PayPal Configuration
+      PayPal__ClientId: ${PAYPAL_CLIENT_ID}
+      PayPal__Secret: ${PAYPAL_SECRET}
+      PayPal__IsSandbox: ${PAYPAL_IS_SANDBOX:-false}
+      
+      # Email Configuration
+      EmailConfiguration__From: ${EMAIL_FROM}
+      EmailConfiguration__SmtpServer: ${EMAIL_SMTP_SERVER}
+      EmailConfiguration__Port: ${EMAIL_PORT:-587}
+      EmailConfiguration__Username: ${EMAIL_USERNAME}
+      EmailConfiguration__Password: ${EMAIL_PASSWORD}
+      EmailConfiguration__UseSSL: ${EMAIL_USE_SSL:-false}
+      
+      # CORS Configuration
+      CORS__AllowedOrigins: ${CORS_ALLOWED_ORIGINS}
+      CORS__AllowCredentials: ${CORS_ALLOW_CREDENTIALS:-true}
     ports:
-      - "5003:80"
+      - "${USER_SERVICE_PORT:-5003}:80"
     depends_on:
-      - user-db
-      - hangfire-db
+      user-db:
+        condition: service_healthy
+      hangfire-db:
+        condition: service_healthy
     networks:
       - takhlees-network
 
@@ -191,11 +311,11 @@ services:
   # ========================================
   nginx:
     image: nginx:alpine
-    container_name: nginx-proxy
+    container_name: ${NGINX_CONTAINER_NAME:-nginx-proxy}
     restart: unless-stopped
     ports:
-      - "8090:80"
-      - "8444:443"
+      - "${NGINX_HTTP_PORT:-8090}:80"
+      - "${NGINX_HTTPS_PORT:-8444}:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
       - ./nginx/ssl:/etc/nginx/ssl
