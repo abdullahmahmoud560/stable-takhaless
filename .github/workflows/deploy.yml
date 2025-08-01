@@ -98,13 +98,13 @@ jobs:
           echo "phpmyadmin-url=https://staging.takhleesak.com:8080/" >> $GITHUB_OUTPUT
           echo "env-type=🟡 Staging" >> $GITHUB_OUTPUT
         else
-          echo "app-url=https://dev.takhleesak.com/" >> $GITHUB_OUTPUT
+          echo "app-url=https://test.takhleesak.com/" >> $GITHUB_OUTPUT
           echo "admin-url=https://dev-admin.takhleesak.com/swagger/index.html" >> $GITHUB_OUTPUT
           echo "customer-service-url=https://dev-customerservices.takhleesak.com/swagger/index.html" >> $GITHUB_OUTPUT
           echo "auth-url=https://dev-firstproject.takhleesak.com/swagger/index.html" >> $GITHUB_OUTPUT
           echo "user-url=https://dev-user.takhleesak.com/swagger/index.html" >> $GITHUB_OUTPUT
           echo "phpmyadmin-url=https://dev.takhleesak.com:8080/" >> $GITHUB_OUTPUT
-          echo "env-type=🟢 Development" >> $GITHUB_OUTPUT
+          echo "env-type=🔴 Production" >> $GITHUB_OUTPUT
         fi
         
     - name: Print deployment summary
