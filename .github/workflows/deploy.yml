@@ -1,5 +1,5 @@
 name: Deploy to Server
-# This workflow is used to deploy the code to the server
+# This workflow is used to deploy the code to the serve
 on:
   push:
     branches: [ prod ]
