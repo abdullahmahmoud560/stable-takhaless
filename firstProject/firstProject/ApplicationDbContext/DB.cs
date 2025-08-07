@@ -63,7 +63,14 @@ namespace firstProject.ApplicationDbContext
             //    NormalizedName = "CustomerService".ToUpper(),
             //    ConcurrencyStamp = Guid.NewGuid().ToString()
             //});
-            
+            builder.Entity<IdentityRole>().HasData(new IdentityRole
+            {
+                Id = Guid.NewGuid().ToString(),
+                Name = "Saber",
+                NormalizedName = "Saber".ToUpper(),
+                ConcurrencyStamp = Guid.NewGuid().ToString()
+            });
+
         }
     }
 }

@@ -193,7 +193,7 @@ namespace User.Controllers
                     if (result > 0)
                     {
                         // ✅ تحسين: جلب Count في استعلام واحد
-                        var valueData = await _db.values
+                        var valueData = await _db.value
                             .Where(l => l.newOrderId == getValue.newOrderId)
                             .Select(v => new { v.BrokerID, v.JopID })
                             .ToListAsync();
@@ -216,7 +216,7 @@ namespace User.Controllers
                             Notes = string.Empty,
                         };
                         await _functions.Logs(Logs);
-                        var Jop = await _db.values.Where(l => l.newOrderId == getValue.newOrderId && l.BrokerID == ID).FirstOrDefaultAsync();
+                        var Jop = await _db.value.Where(l => l.newOrderId == getValue.newOrderId && l.BrokerID == ID).FirstOrDefaultAsync();
                         if (Jop != null && Jop.JopID == null)
                         {
                             var Response = await _functions.SendAPI(ID);
@@ -256,7 +256,7 @@ namespace User.Controllers
                 }
 
                 // ✅ تحسين: استخدام AsNoTracking و Projection
-                var valuesQuery = _db.values
+                var valuesQuery = _db.value
                     .AsNoTracking()
                     .Where(l => l.newOrderId == NewOrderId);
 
@@ -327,7 +327,7 @@ namespace User.Controllers
             try
             {
                 // ✅ تحسين: استخدام AsNoTracking و Projection مباشرة
-                var query = _db.values
+                var query = _db.value
                     .AsNoTracking()
                     .Where(v => v.BrokerID == ID)
                     .GroupBy(v => v.newOrderId)
@@ -580,7 +580,7 @@ namespace User.Controllers
                         return BadRequest(new ApiResponse { Message = "استكمل مراحل الطلب في الطلبات الجاريةٍ" });
                     }
 
-                    var values = await _db.values
+                    var values = await _db.value
                         .AsNoTracking()
                         .Where(l => l.newOrderId == getID.ID)
                         .Select(v => new { v.JopID })
@@ -750,7 +750,7 @@ namespace User.Controllers
                 if (Role == "Broker")
                 {
                     // ✅ تحسين: استخدام AsNoTracking و Projection
-                    var baseQuery = _db.values
+                    var baseQuery = _db.value
                         .AsNoTracking()
                         .Where(v => v.BrokerID == ID)
                         .GroupBy(v => v.newOrderId)
@@ -855,7 +855,7 @@ namespace User.Controllers
                 if (Role == "Admin")
                 {
                     // ✅ تحسين: استخدام استعلام واحد مع GroupBy
-                    var adminStats = await _db.values
+                    var adminStats = await _db.value
                         .AsNoTracking()
                         .GroupBy(v => v.newOrderId)
                         .Select(g => g.First().newOrderId)
@@ -881,7 +881,7 @@ namespace User.Controllers
                 }
 
                 // ✅ تحسين: استخدام استعلام واحد مع GroupBy للـ Broker
-                var brokerStats = await _db.values
+                var brokerStats = await _db.value
                     .AsNoTracking()
                     .Where(v => v.BrokerID == ID)
                     .GroupBy(v => v.newOrderId)
@@ -897,7 +897,7 @@ namespace User.Controllers
                 var currentOrders = brokerStats.FirstOrDefault(s => s.Status != "قيد الإنتظار" && s.Status != "تم التحويل")?.Count ?? 0;
                 var applyOrders = brokerStats.FirstOrDefault(s => s.Status == "قيد الإنتظار")?.Count ?? 0;
 
-                var customerServiceOrders = await _db.values.Where(v => v.BrokerID == ID).GroupBy(v => v.newOrderId).Select(g => g.First().newOrderId) // استخراج newOrderId فقط
+                var customerServiceOrders = await _db.value.Where(v => v.BrokerID == ID).GroupBy(v => v.newOrderId).Select(g => g.First().newOrderId) // استخراج newOrderId فقط
                     .Join(
                         _db.newOrders,
                         newOrderId => newOrderId,

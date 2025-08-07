@@ -7,7 +7,7 @@ using MySql.EntityFrameworkCore.Metadata;
 namespace User.Migrations
 {
     /// <inheritdoc />
-    public partial class allTables : Migration
+    public partial class AddAllTables : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -64,6 +64,21 @@ namespace User.Migrations
                 .Annotation("MySQL:Charset", "utf8mb4");
 
             migrationBuilder.CreateTable(
+                name: "saberCertificates",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("MySQL:ValueGenerationStrategy", MySQLValueGenerationStrategy.IdentityColumn),
+                    Subject = table.Column<string>(type: "longtext", nullable: false),
+                    Description = table.Column<string>(type: "longtext", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_saberCertificates", x => x.Id);
+                })
+                .Annotation("MySQL:Charset", "utf8mb4");
+
+            migrationBuilder.CreateTable(
                 name: "notesAccountings",
                 columns: table => new
                 {
@@ -92,7 +107,7 @@ namespace User.Migrations
                         .Annotation("MySQL:ValueGenerationStrategy", MySQLValueGenerationStrategy.IdentityColumn),
                     Notes = table.Column<string>(type: "longtext", nullable: true),
                     fileName = table.Column<string>(type: "longtext", nullable: true),
-                    fileData = table.Column<byte[]>(type: "longblob", nullable: true),
+                    fileUrl = table.Column<string>(type: "longtext", nullable: true),
                     ContentType = table.Column<string>(type: "longtext", nullable: true),
                     newOrderId = table.Column<int>(type: "int", nullable: true)
                 },
@@ -138,7 +153,7 @@ namespace User.Migrations
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("MySQL:ValueGenerationStrategy", MySQLValueGenerationStrategy.IdentityColumn),
                     fileName = table.Column<string>(type: "longtext", nullable: false),
-                    fileData = table.Column<byte[]>(type: "longblob", nullable: false),
+                    fileUrl = table.Column<string>(type: "longtext", nullable: false),
                     ContentType = table.Column<string>(type: "longtext", nullable: false),
                     newOrderId = table.Column<int>(type: "int", nullable: false)
                 },
@@ -155,7 +170,7 @@ namespace User.Migrations
                 .Annotation("MySQL:Charset", "utf8mb4");
 
             migrationBuilder.CreateTable(
-                name: "values",
+                name: "value",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
@@ -168,9 +183,9 @@ namespace User.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_values", x => x.Id);
+                    table.PrimaryKey("PK_value", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_values_newOrders_newOrderId",
+                        name: "FK_value_newOrders_newOrderId",
                         column: x => x.newOrderId,
                         principalTable: "newOrders",
                         principalColumn: "Id");
@@ -198,8 +213,8 @@ namespace User.Migrations
                 column: "newOrderId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_values_newOrderId",
-                table: "values",
+                name: "IX_value_newOrderId",
+                table: "value",
                 column: "newOrderId");
         }
 
@@ -216,13 +231,16 @@ namespace User.Migrations
                 name: "paymentDetails");
 
             migrationBuilder.DropTable(
+                name: "saberCertificates");
+
+            migrationBuilder.DropTable(
                 name: "typeOrders");
 
             migrationBuilder.DropTable(
                 name: "uploadFiles");
 
             migrationBuilder.DropTable(
-                name: "values");
+                name: "value");
 
             migrationBuilder.DropTable(
                 name: "newOrders");

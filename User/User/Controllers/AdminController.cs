@@ -41,7 +41,7 @@ namespace User.Controllers
                     .CountAsync();
 
                 // ✅ تحسين: استخدام Join بدلاً من Any
-                var Exports = await _db.values
+                var Exports = await _db.value
                     .AsNoTracking()
                     .Where(v => v.Accept == true)
                     .Join(_db.newOrders,

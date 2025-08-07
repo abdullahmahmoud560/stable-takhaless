@@ -221,7 +221,7 @@ namespace User.Controllers
                         {
                             return NotFound(new ApiResponse { Message = "لم يتم العثور على الطلب" });
                         }
-                        var value = await _db.values.Where(l => l.BrokerID == getID.BrokerID && l.Value == getID.Value).FirstOrDefaultAsync();
+                        var value = await _db.value.Where(l => l.BrokerID == getID.BrokerID && l.Value == getID.Value).FirstOrDefaultAsync();
                         if (value == null)
                         {
                             return NotFound(new ApiResponse { Message = "لم يتم العثور على القيمة المطلوبة" });
@@ -486,7 +486,7 @@ namespace User.Controllers
                     .Where(t => orderIds.Contains(t.newOrderId!.Value))
                     .ToListAsync();
 
-                var values = await _db.values
+                var values = await _db.value
                     .AsNoTracking()
                     .Where(v => orderIds.Contains(v.newOrderId!.Value) && v.Accept == true)
                     .ToListAsync();

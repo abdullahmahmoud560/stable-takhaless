@@ -402,10 +402,10 @@ namespace User.Controllers
                     case "send":
                         if (getID.BrokerID != null)
                         {
-                            var deleteValues = await _db.values
+                            var deleteValues = await _db.value
                                 .Where(v => v.newOrderId == order.Id && v.Accept == true && v.BrokerID == getID.BrokerID)
                                 .ToListAsync();
-                            _db.values.RemoveRange(deleteValues);
+                            _db.value.RemoveRange(deleteValues);
                         }
                         order.statuOrder = "قيد الإنتظار";
                         order.AcceptCustomerService = userId;

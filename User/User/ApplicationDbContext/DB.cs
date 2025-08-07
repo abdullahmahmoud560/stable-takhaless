@@ -10,10 +10,11 @@ namespace User.ApplicationDbContext
         public DbSet<NewOrder> newOrders { get; set; }
         public DbSet<UploadFile> uploadFiles { get; set; }
         public DbSet<NumberOfTypeOrder> typeOrders { get; set; }
-        public DbSet<Values> values { get; set; }
+        public DbSet<Values> value { get; set; }
         public DbSet<NotesCustomerService> notesCustomerServices { get; set; }
         public DbSet<NotesAccounting> notesAccountings { get; set; }
         public DbSet<PaymentDetails> paymentDetails { get; set; }
+        public DbSet<SaberCertificates> saberCertificates { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
