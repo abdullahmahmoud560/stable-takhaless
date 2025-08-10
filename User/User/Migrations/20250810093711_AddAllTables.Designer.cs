@@ -11,8 +11,8 @@ using User.ApplicationDbContext;
 namespace User.Migrations
 {
     [DbContext(typeof(DB))]
-    [Migration("20250515143702_allTables")]
-    partial class allTables
+    [Migration("20250810093711_AddAllTables")]
+    partial class AddAllTables
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -120,10 +120,10 @@ namespace User.Migrations
                     b.Property<string>("Notes")
                         .HasColumnType("longtext");
 
-                    b.Property<byte[]>("fileData")
-                        .HasColumnType("longblob");
-
                     b.Property<string>("fileName")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("fileUrl")
                         .HasColumnType("longtext");
 
                     b.Property<int?>("newOrderId")
@@ -205,11 +205,11 @@ namespace User.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
-                    b.Property<byte[]>("fileData")
-                        .IsRequired()
-                        .HasColumnType("longblob");
-
                     b.Property<string>("fileName")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("fileUrl")
                         .IsRequired()
                         .HasColumnType("longtext");
 
@@ -250,6 +250,29 @@ namespace User.Migrations
                     b.HasIndex("newOrderId");
 
                     b.ToTable("values");
+                });
+
+            modelBuilder.Entity("User.Model.saberCertificate", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("saberCertificates");
                 });
 
             modelBuilder.Entity("User.Model.NotesAccounting", b =>

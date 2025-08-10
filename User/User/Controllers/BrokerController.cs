@@ -833,7 +833,7 @@ namespace User.Controllers
             };
         }
 
-        //[Authorize(Roles = "Broker,Admin,Manager")]
+        [Authorize(Roles = "Broker,Admin,Manager")]
         [HttpGet("Number-Of-Operations-Broker")]
         public async Task<IActionResult> Numberofoperations()
         {
@@ -893,6 +893,7 @@ namespace User.Controllers
                     .GroupBy(status => status)
                     .Select(g => new { Status = g.Key, Count = g.Count() })
                     .ToListAsync();
+
 
                 var currentOrders = brokerStats.FirstOrDefault(s => s.Status != "قيد الإنتظار" && s.Status != "تم التحويل")?.Count ?? 0;
                 var applyOrders = brokerStats.FirstOrDefault(s => s.Status == "قيد الإنتظار")?.Count ?? 0;

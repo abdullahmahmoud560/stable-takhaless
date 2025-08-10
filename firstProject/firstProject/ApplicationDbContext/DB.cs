@@ -1,5 +1,4 @@
-﻿using System.Reflection.Emit;
-using firstProject.Model;
+﻿using firstProject.Model;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -36,7 +35,7 @@ namespace firstProject.ApplicationDbContext
             //    Name = "Manager",
             //    NormalizedName = "Manager".ToUpper(),
             //    ConcurrencyStamp = Guid.NewGuid().ToString()
-            //});builder.Entity<IdentityRole>().HasData(new IdentityRole
+            //}); builder.Entity<IdentityRole>().HasData(new IdentityRole
             //{
             //    Id = Guid.NewGuid().ToString(),
             //    Name = "Account",
@@ -63,7 +62,14 @@ namespace firstProject.ApplicationDbContext
             //    NormalizedName = "CustomerService".ToUpper(),
             //    ConcurrencyStamp = Guid.NewGuid().ToString()
             //});
-            
+            //builder.Entity<IdentityRole>().HasData(new IdentityRole
+            //{
+            //    Id = Guid.NewGuid().ToString(),
+            //    Name = "Saber",
+            //    NormalizedName = "Saber".ToUpper(),
+            //    ConcurrencyStamp = Guid.NewGuid().ToString()
+            //});
+
         }
     }
 }
