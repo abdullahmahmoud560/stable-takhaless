@@ -250,6 +250,14 @@ services:
       # CORS Configuration
       CORS__AllowedOrigins: ${CORS_ALLOWED_ORIGINS}
       CORS__AllowCredentials: ${CORS_ALLOW_CREDENTIALS:-true}
+      
+      # Email Configuration
+      EmailConfiguration__From: ${EMAIL_FROM}
+      EmailConfiguration__SmtpServer: ${EMAIL_SMTP_SERVER}
+      EmailConfiguration__Port: ${EMAIL_PORT}
+      EmailConfiguration__Username: ${EMAIL_USERNAME}
+      EmailConfiguration__Password: ${EMAIL_PASSWORD}
+      EmailConfiguration__UseSSL: ${EMAIL_USE_SSL:-false}
     ports:
       - "${FIRSTPROJECT_SERVICE_PORT:-9100}:${FIRSTPROJECT_SERVICE_INTERNAL_PORT:-9100}"
     depends_on:

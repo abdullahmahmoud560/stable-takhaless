@@ -21,13 +21,12 @@ builder.Services
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+// Enable Swagger in all environments for API documentation
+app.UseSwagger();
+app.UseSwaggerUI();
 
-app.UseHttpsRedirection();
+// Temporarily disable HTTPS redirection for testing
+// app.UseHttpsRedirection();
 app.UseRouting();
 app.UseCors("MyCors");
 app.UseAuthentication();
