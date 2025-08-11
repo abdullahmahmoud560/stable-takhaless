@@ -7,7 +7,7 @@ using MySql.EntityFrameworkCore.Metadata;
 namespace User.Migrations
 {
     /// <inheritdoc />
-    public partial class AddAllTables : Migration
+    public partial class AddallTables : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -60,22 +60,6 @@ namespace User.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_paymentDetails", x => x.Id);
-                })
-                .Annotation("MySQL:Charset", "utf8mb4");
-
-            migrationBuilder.CreateTable(
-                name: "saberCertificates",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("MySQL:ValueGenerationStrategy", MySQLValueGenerationStrategy.IdentityColumn),
-                    Subject = table.Column<string>(type: "longtext", nullable: false),
-                    Description = table.Column<string>(type: "longtext", nullable: false),
-                    UserId = table.Column<string>(type: "longtext", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_saberCertificates", x => x.Id);
                 })
                 .Annotation("MySQL:Charset", "utf8mb4");
 
@@ -230,9 +214,6 @@ namespace User.Migrations
 
             migrationBuilder.DropTable(
                 name: "paymentDetails");
-
-            migrationBuilder.DropTable(
-                name: "saberCertificates");
 
             migrationBuilder.DropTable(
                 name: "typeOrders");

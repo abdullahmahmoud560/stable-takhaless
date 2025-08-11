@@ -14,7 +14,6 @@ namespace User.ApplicationDbContext
         public DbSet<NotesCustomerService> notesCustomerServices { get; set; }
         public DbSet<NotesAccounting> notesAccountings { get; set; }
         public DbSet<PaymentDetails> paymentDetails { get; set; }
-        public DbSet<saberCertificate> saberCertificates { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);

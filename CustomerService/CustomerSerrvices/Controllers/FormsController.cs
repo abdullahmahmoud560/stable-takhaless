@@ -19,18 +19,28 @@ namespace CustomerSerrvices.Controllers
         [HttpPost("Form")]
         public async Task<IActionResult> SubmitForm(FormDTO formDTO)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(new ApiResponse 
-                { 
-                    Message = "البيانات غير صحيحة",
-                    State = "Error"
-                });
-            }
+            if (string.IsNullOrEmpty(formDTO.fullName) ||
+               string.IsNullOrWhiteSpace(formDTO.Message) ||
+               string.IsNullOrEmpty(formDTO.Email) ||
+               string.IsNullOrEmpty(formDTO.phoneNumber)) { return BadRequest("برجاء إدجاء جميع الحقول المطلوبة"); }
+
+            formDTO.fullName = StripHtml(formDTO.fullName!);
+            formDTO.Message = StripHtml(formDTO.Message!);
+            formDTO.Email = StripHtml(formDTO.Email!);
+            formDTO.phoneNumber = StripHtml(formDTO.phoneNumber!);
 
             var result = await _formService.SubmitFormAsync(formDTO);
             return Ok(result);
         }
+
+        private string StripHtml(string input)
+        {
+            if (string.IsNullOrWhiteSpace(input))
+                return input;
+
+            return System.Text.RegularExpressions.Regex.Replace(input, "<.*?>", string.Empty);
+        }
+
 
         [Authorize(Roles = "Admin,CustomerService")]
         [HttpGet("Get-Form/{page}")]

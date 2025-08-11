@@ -249,29 +249,6 @@ namespace User.Migrations
                     b.ToTable("values");
                 });
 
-            modelBuilder.Entity("User.Model.saberCertificate", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("Subject")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("saberCertificates");
-                });
-
             modelBuilder.Entity("User.Model.NotesAccounting", b =>
                 {
                     b.HasOne("User.Model.NewOrder", "newOrder")

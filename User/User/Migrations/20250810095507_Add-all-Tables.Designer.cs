@@ -11,8 +11,8 @@ using User.ApplicationDbContext;
 namespace User.Migrations
 {
     [DbContext(typeof(DB))]
-    [Migration("20250810093711_AddAllTables")]
-    partial class AddAllTables
+    [Migration("20250810095507_Add-all-Tables")]
+    partial class AddallTables
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -250,29 +250,6 @@ namespace User.Migrations
                     b.HasIndex("newOrderId");
 
                     b.ToTable("values");
-                });
-
-            modelBuilder.Entity("User.Model.saberCertificate", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("Subject")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("saberCertificates");
                 });
 
             modelBuilder.Entity("User.Model.NotesAccounting", b =>

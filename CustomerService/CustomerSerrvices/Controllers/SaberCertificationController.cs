@@ -1,8 +1,7 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
+﻿using CustomerSerrvices.ApplicationDbContext;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using User.ApplicationDbContext;
 using User.DTO;
 using User.Model;
 
@@ -61,8 +60,6 @@ namespace User.Controllers
                 Data = saberCertificates
             });
         }
-
-
 
     }
 }
