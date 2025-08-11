@@ -7,7 +7,7 @@ using MySql.EntityFrameworkCore.Metadata;
 namespace User.Migrations
 {
     /// <inheritdoc />
-    public partial class allTables : Migration
+    public partial class AddallTables : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -92,7 +92,7 @@ namespace User.Migrations
                         .Annotation("MySQL:ValueGenerationStrategy", MySQLValueGenerationStrategy.IdentityColumn),
                     Notes = table.Column<string>(type: "longtext", nullable: true),
                     fileName = table.Column<string>(type: "longtext", nullable: true),
-                    fileData = table.Column<byte[]>(type: "longblob", nullable: true),
+                    fileUrl = table.Column<string>(type: "longtext", nullable: true),
                     ContentType = table.Column<string>(type: "longtext", nullable: true),
                     newOrderId = table.Column<int>(type: "int", nullable: true)
                 },
@@ -138,7 +138,7 @@ namespace User.Migrations
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("MySQL:ValueGenerationStrategy", MySQLValueGenerationStrategy.IdentityColumn),
                     fileName = table.Column<string>(type: "longtext", nullable: false),
-                    fileData = table.Column<byte[]>(type: "longblob", nullable: false),
+                    fileUrl = table.Column<string>(type: "longtext", nullable: false),
                     ContentType = table.Column<string>(type: "longtext", nullable: false),
                     newOrderId = table.Column<int>(type: "int", nullable: false)
                 },

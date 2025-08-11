@@ -1,0 +1,44 @@
+[33ma0f18e0[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mdev[m[33m, [m[1;31morigin/dev[m[33m)[m HEAD@{0}: pull origin dev: Merge made by the 'ort' strategy.
+[33mb02b27d[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{1}: checkout: moving from main to dev
+[33me5bf720[m[33m ([m[1;32mmain[m[33m)[m HEAD@{2}: commit: saberCertificates
+[33m0167eb6[m[33m ([m[1;31mbackup/main[m[33m, [m[1;31mbackup/HEAD[m[33m)[m HEAD@{3}: commit: آخر التعديلات
+[33mb02b27d[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{4}: merge dev: Fast-forward
+[33ma305984[m HEAD@{5}: checkout: moving from dev to main
+[33mb02b27d[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{6}: commit (amend): t rebase --continue
+[33mb201d3d[m HEAD@{7}: rebase (abort): returning to refs/heads/dev
+[33mc668857[m HEAD@{8}: commit: orderby
+[33mba08097[m HEAD@{9}: checkout: moving from stable-performance to ba080975e32448872d7acc7a6fa67dca6878ca68
+[33m98bdc58[m[33m ([m[1;31morigin/stable-performance[m[33m, [m[1;32mstable-performance[m[33m)[m HEAD@{10}: commit: orderby
+[33ma73a8b3[m HEAD@{11}: pull --rebase origin stable-performance: Fast-forward
+[33m499ac9e[m HEAD@{12}: checkout: moving from ba080975e32448872d7acc7a6fa67dca6878ca68 to stable-performance
+[33mba08097[m HEAD@{13}: commit: Save local changes before switching branch
+[33mc4240e0[m HEAD@{14}: pull origin stable-performance --rebase (pick): Add dev workflow and other changes
+[33ma73a8b3[m HEAD@{15}: pull origin stable-performance --rebase (start): checkout a73a8b3c25d072a4f2d9a146b768c13b8f24bf2b
+[33mb201d3d[m HEAD@{16}: commit: fix admin
+[33m048435d[m HEAD@{17}: commit: a
+[33ma726faf[m HEAD@{18}: commit: a
+[33m59317a2[m HEAD@{19}: pull origin dev: Fast-forward
+[33m3f281f7[m HEAD@{20}: checkout: moving from stable-performance to dev
+[33m499ac9e[m HEAD@{21}: commit: numberOfBroker
+[33mce357ed[m HEAD@{22}: commit: fix all orders for broker
+[33m248ac18[m HEAD@{23}: commit: show error
+[33m7966ef8[m HEAD@{24}: pull origin stable-performance: Merge made by the 'ort' strategy.
+[33m3a080f3[m HEAD@{25}: commit: fix bugs to performance code
+[33meb19893[m HEAD@{26}: commit: change acceptOrder user
+[33m3b3cfb5[m HEAD@{27}: pull origin stable-performance: Merge made by the 'ort' strategy.
+[33md922414[m HEAD@{28}: checkout: moving from stable-performance to stable-performance
+[33md922414[m HEAD@{29}: commit: last version
+[33m5b9ace5[m HEAD@{30}: commit: Pagination
+[33mde37f37[m HEAD@{31}: commit: changing
+[33m8bb0718[m HEAD@{32}: commit: Added fileUrl to NotesCustomerService and updated controllers
+[33mabbc36f[m HEAD@{33}: commit: change some api
+[33m525351f[m[33m ([m[1;31morigin/stable[m[33m)[m HEAD@{34}: commit: fileURL
+[33m7a0ec70[m HEAD@{35}: commit: تحسين الأداء في الفرع stable-performance
+[33ma305984[m HEAD@{36}: checkout: moving from main to stable-performance
+[33ma305984[m HEAD@{37}: commit: change links
+[33m26782a1[m HEAD@{38}: commit: change
+[33mfd39607[m HEAD@{39}: commit: a
+[33m9be3106[m HEAD@{40}: commit: fix error with user service and admin
+[33me9cfba9[m HEAD@{41}: commit: changeAdminMicroservice
+[33m248ca18[m HEAD@{42}: commit: changeAdmin
+[33mac68914[m HEAD@{43}: clone: from https://github.com/Takhles-Technology/takhles-back-stable.git

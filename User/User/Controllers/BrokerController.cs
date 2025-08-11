@@ -893,7 +893,6 @@ namespace User.Controllers
                     .GroupBy(status => status)
                     .Select(g => new { Status = g.Key, Count = g.Count() })
                     .ToListAsync();
-
                 var currentOrders = brokerStats.FirstOrDefault(s => s.Status != "قيد الإنتظار" && s.Status != "تم التحويل")?.Count ?? 0;
                 var applyOrders = brokerStats.FirstOrDefault(s => s.Status == "قيد الإنتظار")?.Count ?? 0;
 

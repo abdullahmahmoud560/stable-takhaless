@@ -8,7 +8,7 @@ namespace CustomerSerrvices.DTO
         [Required]
         public string? Message { get; set; }
         [Required]
-        [RegularExpression(@"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", ErrorMessage = ("البريد الإلكترونى غير صحيح"))]
+        [EmailAddress(ErrorMessage = "البريد الإلكتروني غير صالح")]
         public string? Email { get; set; }
         [Required]
         [StringLength(45, MinimumLength = 3, ErrorMessage = (" ,يجب ادخال الاسم لايزيد عن  45 حرف  ولا يقل عن 7 حروف"))]
