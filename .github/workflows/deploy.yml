@@ -1,8 +1,8 @@
 name: Deploy to Server
-
+# This workflow is used to deploy the code to the serve
 on:
   push:
-    branches: [ main, master, stable-performance ]
+    branches: [ prod ]
   workflow_dispatch:
     inputs:
       environment:
@@ -39,11 +39,19 @@ jobs:
           # Pull latest changes from git repo and token
           git pull https://${{ secrets.SERVER_NAME }}:${{ secrets.SERVER_TOKEN }}@github.com/${{ github.repository }}.git ${{ github.ref_name }}
           
+<<<<<<< HEAD
           # Stop existing containers
           docker compose down
           
           # Build and start containers
           docker compose up --build -d
+=======
+          # Stop existing containers with production environment
+          docker-compose --env-file .env.prod down
+          
+          # Build and start containers with production environment
+          docker-compose --env-file .env.prod up --build -d
+>>>>>>> origin/prod
           
           # Wait for services to start
           sleep 30
@@ -98,13 +106,13 @@ jobs:
           echo "phpmyadmin-url=https://staging.takhleesak.com:8080/" >> $GITHUB_OUTPUT
           echo "env-type=🟡 Staging" >> $GITHUB_OUTPUT
         else
-          echo "app-url=https://dev.takhleesak.com/" >> $GITHUB_OUTPUT
+          echo "app-url=https://test.takhleesak.com/" >> $GITHUB_OUTPUT
           echo "admin-url=https://dev-admin.takhleesak.com/swagger/index.html" >> $GITHUB_OUTPUT
           echo "customer-service-url=https://dev-customerservices.takhleesak.com/swagger/index.html" >> $GITHUB_OUTPUT
           echo "auth-url=https://dev-firstproject.takhleesak.com/swagger/index.html" >> $GITHUB_OUTPUT
           echo "user-url=https://dev-user.takhleesak.com/swagger/index.html" >> $GITHUB_OUTPUT
           echo "phpmyadmin-url=https://dev.takhleesak.com:8080/" >> $GITHUB_OUTPUT
-          echo "env-type=🟢 Development" >> $GITHUB_OUTPUT
+          echo "env-type=🔴 Production" >> $GITHUB_OUTPUT
         fi
         
     - name: Print deployment summary

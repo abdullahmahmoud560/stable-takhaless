@@ -8,7 +8,7 @@ echo "🔍 Testing SMTP Connection..."
 echo "==============================="
 
 # Load environment variables
-source ../firstProject/environment.env 2>/dev/null || {
+source ../.env.prod 2>/dev/null || {
     echo "❌ Could not load environment variables"
     exit 1
 }

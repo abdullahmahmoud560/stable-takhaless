@@ -161,7 +161,35 @@ services:
     env_file:
       - firstProject/environment.env
     environment:
+<<<<<<< HEAD
       - PORT=9100
+=======
+      # Application Configuration
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      ASPNETCORE_URLS: http://+:${FIRSTPROJECT_SERVICE_INTERNAL_PORT:-9100}
+      PORT: ${FIRSTPROJECT_SERVICE_INTERNAL_PORT:-9100}
+      
+      # Database Configuration
+      ConnectionStrings__DefaultConnection: Server=${FIRSTPROJECT_DB_CONTAINER_NAME:-firstproject-db};Database=${FIRSTPROJECT_DB_NAME};User=${FIRSTPROJECT_DB_USER};Password=${FIRSTPROJECT_DB_PASSWORD};SslMode=Preferred;
+      ConnectionStrings__Connection: Server=${FIRSTPROJECT_DB_CONTAINER_NAME:-firstproject-db};Database=${FIRSTPROJECT_DB_NAME};User=${FIRSTPROJECT_DB_USER};Password=${FIRSTPROJECT_DB_PASSWORD};
+      
+      # JWT Settings
+      JWT__Issuer: ${JWT_ISSUER}
+      JWT__Audience: ${JWT_AUDIENCE}
+      JWT__SecretKey: ${JWT_SECRET_KEY}
+      
+      # CORS Configuration
+      CORS__AllowedOrigins: ${CORS_ALLOWED_ORIGINS}
+      CORS__AllowCredentials: ${CORS_ALLOW_CREDENTIALS:-true}
+      
+      # Email Configuration
+      EmailConfiguration__From: ${EMAIL_FROM}
+      EmailConfiguration__SmtpServer: ${EMAIL_SMTP_SERVER}
+      EmailConfiguration__Port: ${EMAIL_PORT}
+      EmailConfiguration__Username: ${EMAIL_USERNAME}
+      EmailConfiguration__Password: ${EMAIL_PASSWORD}
+      EmailConfiguration__UseSSL: ${EMAIL_USE_SSL:-false}
+>>>>>>> origin/prod
     ports:
       - "9100:9100"
     depends_on:

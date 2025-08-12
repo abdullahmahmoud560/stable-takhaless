@@ -22,10 +22,20 @@ builder.Services.AddSignalR();
 
 var app = builder.Build();
 
+<<<<<<< HEAD
 
 app.UseSwagger();
 app.UseSwaggerUI();
 app.UseHttpsRedirection();
+=======
+// Configure the HTTP request pipeline
+// Enable Swagger in all environments for API documentation
+app.UseSwagger();
+app.UseSwaggerUI();
+
+// Temporarily disable HTTPS redirection for testing
+// app.UseHttpsRedirection();
+>>>>>>> origin/prod
 app.UseRouting();
 app.UseCors("MyCors");
 app.UseAuthentication();

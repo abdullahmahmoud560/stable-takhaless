@@ -85,6 +85,7 @@ namespace firstProject.Controllers
 </body>
 </html>", verifyCode);
                 var result = await _emailService.SendEmailAsync(user.Email!, "تأكيد تسجيل الدخول", Body);
+                Console.WriteLine($"📧 Email sending result: {result}");
                 var roles = await _userManager.GetRolesAsync(user);
                 var rolesString = string.Join(", ", roles);
                 user.lastLogin = DateTime.UtcNow;

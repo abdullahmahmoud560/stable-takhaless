@@ -27,6 +27,7 @@ builder.Services.AddSingleton<IProcessingStrategy, AsyncKeyLockProcessingStrateg
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<EmailService>();
+builder.Services.AddScoped<Token_verfy>(); // إضافة Token_verfy لحل مشكلة DI
 
 // ✅ إضافة MySQL
 builder.Services.AddDbContext<DB>(options =>
