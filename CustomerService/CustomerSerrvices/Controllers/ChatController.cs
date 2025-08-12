@@ -35,7 +35,7 @@ namespace freelancer.Controllers
 
 
         [Authorize]
-        [HttpGet("Gat-All-Chats")]
+        [HttpGet("Get-All-Chats")]
         public async Task<IActionResult> GetAllChats()
         {
             try

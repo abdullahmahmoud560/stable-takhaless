@@ -94,7 +94,7 @@ builder.Services.AddScoped<EmailService>();
 
 builder.Services.AddHangfire(config =>
     config.UseStorage(new MySqlStorage(
-       Environment.GetEnvironmentVariable("ConnectionStrings__HangeFire")!,
+       Environment.GetEnvironmentVariable("ConnectionStrings__HangFire")!,
         new MySqlStorageOptions
         {
             QueuePollInterval = TimeSpan.FromMinutes(15),

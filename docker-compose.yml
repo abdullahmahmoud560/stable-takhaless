@@ -161,9 +161,6 @@ services:
     env_file:
       - firstProject/environment.env
     environment:
-<<<<<<< HEAD
-      - PORT=9100
-=======
       # Application Configuration
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
       ASPNETCORE_URLS: http://+:${FIRSTPROJECT_SERVICE_INTERNAL_PORT:-9100}
@@ -189,7 +186,6 @@ services:
       EmailConfiguration__Username: ${EMAIL_USERNAME}
       EmailConfiguration__Password: ${EMAIL_PASSWORD}
       EmailConfiguration__UseSSL: ${EMAIL_USE_SSL:-false}
->>>>>>> origin/prod
     ports:
       - "9100:9100"
     depends_on:
