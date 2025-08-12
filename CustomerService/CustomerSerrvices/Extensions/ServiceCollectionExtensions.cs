@@ -13,7 +13,6 @@ namespace CustomerSerrvices.Extensions
         {
             services.AddDbContext<DB>(options =>
                 options.UseMySQL(Environment.GetEnvironmentVariable("ConnectionStrings__Connection")!));
-            
             return services;
         }
 
@@ -78,7 +77,6 @@ namespace CustomerSerrvices.Extensions
             services.AddScoped<IFormService, FormService>();
             services.AddScoped<IAuthService, AuthService>();
             services.AddHealthChecks();
-            
             return services;
         }
     }
