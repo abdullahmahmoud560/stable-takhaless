@@ -39,19 +39,11 @@ jobs:
           # Pull latest changes from git repo and token
           git pull https://${{ secrets.SERVER_NAME }}:${{ secrets.SERVER_TOKEN }}@github.com/${{ github.repository }}.git ${{ github.ref_name }}
           
-<<<<<<< HEAD
-          # Stop existing containers
-          docker compose down
-          
-          # Build and start containers
-          docker compose up --build -d
-=======
           # Stop existing containers with production environment
           docker-compose --env-file .env.prod down
           
           # Build and start containers with production environment
           docker-compose --env-file .env.prod up --build -d
->>>>>>> origin/prod
           
           # Wait for services to start
           sleep 30
@@ -137,7 +129,6 @@ jobs:
         echo "  - phpMyAdmin (Port 8080)"
         echo "==========================================="
         echo "✅ Deployment completed successfully!" 
-
     - name: Send deployment notification email
       if: always()
       uses: dawidd6/action-send-mail@v3
