@@ -33,36 +33,34 @@ namespace firstProject.Controllers
         [HttpPost("Register-user")]
         public async Task<IActionResult> Register_user([FromBody] UserDTO registerDTO)
         {
-            try
+            var existingUser = await _userManager.Users
+                .AnyAsync(u => u.Email == registerDTO.Email || u.PhoneNumber == registerDTO.phoneNumber);
+
+            if (existingUser)
             {
-                var existingUser = await _userManager.Users
-                    .AnyAsync(u => u.Email == registerDTO.Email || u.PhoneNumber == registerDTO.phoneNumber);
+                return BadRequest(new ApiResponse { Message = "الرقم او البريد مستخدم بالفعل" });
+            }
 
-                if (existingUser)
-                {
-                    return BadRequest(new ApiResponse { Message = "الرقم او البريد مستخدم بالفعل" });
-                }
+            var user = new User
+            {
+                fullName = registerDTO.fullName,
+                Email = registerDTO.Email,
+                PhoneNumber = registerDTO.phoneNumber,
+                UserName = Guid.NewGuid().ToString(),
+                Identity = registerDTO.Identity
+            };
 
-                var user = new User
-                {
-                    fullName = registerDTO.fullName,
-                    Email = registerDTO.Email,
-                    PhoneNumber = registerDTO.phoneNumber,
-                    UserName = Guid.NewGuid().ToString(),
-                    Identity = registerDTO.Identity
-                };
+            if (registerDTO.Password != registerDTO.Confirm)
+            {
+                return BadRequest(new ApiResponse { Message = "كلمة المرور وتأكيد كلمة المرور غير متطابقتين" });
+            }
 
-                if (registerDTO.Password != registerDTO.Confirm)
-                {
-                    return BadRequest(new ApiResponse { Message = "كلمة المرور وتأكيد كلمة المرور غير متطابقتين" });
-                }
-
-                var result = await _userManager.CreateAsync(user, registerDTO.Password!);
-                if (result.Succeeded)
-                {
-                    await _userManager.AddToRoleAsync(user, "User");
-                    var verifyCode = await new Functions(_userManager, _db, _httpContextAccessor, _httpClient).GenerateVerifyCode(user, "VerifyUserEmail")!;
-                    var Body = string.Format(@"
+            var result = await _userManager.CreateAsync(user, registerDTO.Password!);
+            if (result.Succeeded)
+            {
+                await _userManager.AddToRoleAsync(user, "User");
+                var verifyCode = await new Functions(_userManager, _db, _httpContextAccessor, _httpClient).GenerateVerifyCode(user, "VerifyUserEmail")!;
+                var Body = string.Format(@"
 <!DOCTYPE html>
 <html lang=""ar"">
 <head>
@@ -83,71 +81,64 @@ namespace firstProject.Controllers
     </div>
 </body>
 </html>", verifyCode);
-                    var send = await _emailService.SendEmailAsync(user.Email!, "تأكيد بريدك الإلكتروني", Body);
-                    var generatedToken = await _tokenVerifyService.GenerateToken(user);
+                var send = await _emailService.SendEmailAsync(user.Email!, "تأكيد بريدك الإلكتروني", Body);
+                var generatedToken = await _tokenVerifyService.GenerateToken(user);
 
-                    Response.Cookies.Append("token", generatedToken, new CookieOptions
-                    {
-                        HttpOnly = true,
-                        Secure = true,
-                        SameSite = SameSiteMode.None,
-                        Expires = DateTime.UtcNow.AddMinutes(30),
-                        Domain = ".takhleesak.com",
-                        Path = "/"
-                    });
+                Response.Cookies.Append("token", generatedToken, new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.None,
+                    Expires = DateTime.UtcNow.AddMinutes(30),
+                    Domain = ".takhleesak.com",
+                    Path = "/"
+                });
 
-                    return Ok(new ApiResponse { Message = "تم تسجيل حساب الافراد بنجاح", Data = "VerifyUserEmail" });
-                }
-
-                return BadRequest(new ApiResponse { Message = "فشل في التسجيل" });
+                return Ok(new ApiResponse { Message = "تم تسجيل حساب الافراد بنجاح", Data = "VerifyUserEmail" });
             }
-            catch (Exception)
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "فشل في التسجيل" });
-            }
+
+            return BadRequest(new ApiResponse { Message = "فشل في التسجيل" });
         }
 
         //انشاء حساب للأعمال
         [HttpPost("Register-company")]
         public async Task<IActionResult> Register_company([FromBody] CompanyDTO companyDTO)
         {
-            try
+            var existingUser = await _userManager.Users
+                .AnyAsync(u => u.Email == companyDTO.Email! || u.PhoneNumber == companyDTO.phoneNumber);
+
+            if (existingUser)
             {
-                var existingUser = await _userManager.Users
-                    .AnyAsync(u => u.Email == companyDTO.Email! || u.PhoneNumber == companyDTO.phoneNumber);
+                return BadRequest(new ApiResponse { Message = "الرقم او البريد مستخدم بالفعل" });
+            }
 
-                if (existingUser)
-                {
-                    return BadRequest(new ApiResponse { Message = "الرقم او البريد مستخدم بالفعل" });
-                }
+            if (companyDTO.Password != companyDTO.Confirm)
+            {
+                return BadRequest(new ApiResponse { Message = "كلمة المرور وتأكيد كلمة المرور غير متطابقتين" });
+            }
 
-                if (companyDTO.Password != companyDTO.Confirm)
-                {
-                    return BadRequest(new ApiResponse { Message = "كلمة المرور وتأكيد كلمة المرور غير متطابقتين" });
-                }
+            if (string.IsNullOrEmpty(companyDTO.taxRecord) || string.IsNullOrEmpty(companyDTO.InsuranceNumber))
+            {
+                return BadRequest(new ApiResponse { Message = "يجب تعبئة جميع الحقول المطلوبة" });
+            }
 
-                if (string.IsNullOrEmpty(companyDTO.taxRecord) || string.IsNullOrEmpty(companyDTO.InsuranceNumber))
-                {
-                    return BadRequest(new ApiResponse { Message = "يجب تعبئة جميع الحقول المطلوبة" });
-                }
+            var user = new User
+            {
+                fullName = companyDTO.fullName,
+                Email = companyDTO.Email,
+                PhoneNumber = companyDTO.phoneNumber,
+                UserName = Guid.NewGuid().ToString(),
+                Identity = companyDTO.Identity,
+                taxRecord = companyDTO.taxRecord,
+                InsuranceNumber = companyDTO.InsuranceNumber,
+            };
 
-                var user = new User
-                {
-                    fullName = companyDTO.fullName,
-                    Email = companyDTO.Email,
-                    PhoneNumber = companyDTO.phoneNumber,
-                    UserName = Guid.NewGuid().ToString(),
-                    Identity = companyDTO.Identity,
-                    taxRecord = companyDTO.taxRecord,
-                    InsuranceNumber = companyDTO.InsuranceNumber,
-                };
-
-                var result = await _userManager.CreateAsync(user, companyDTO.Password!);
-                if (result.Succeeded)
-                {
-                    await _userManager.AddToRoleAsync(user, "Company");
-                    var verifyCode = await new Functions(_userManager, _db, _httpContextAccessor, _httpClient).GenerateVerifyCode(user, "VerifyCompanyEmail")!;
-                    var Body = string.Format(@"
+            var result = await _userManager.CreateAsync(user, companyDTO.Password!);
+            if (result.Succeeded)
+            {
+                await _userManager.AddToRoleAsync(user, "Company");
+                var verifyCode = await new Functions(_userManager, _db, _httpContextAccessor, _httpClient).GenerateVerifyCode(user, "VerifyCompanyEmail")!;
+                var Body = string.Format(@"
 <!DOCTYPE html>
 <html lang=""ar"">
 <head>
@@ -175,74 +166,67 @@ namespace firstProject.Controllers
     </div>
 </body>
 </html>", verifyCode);
-                    await _emailService.SendEmailAsync(user.Email!, "تأكيد بريدك الإلكتروني", Body);
-                    var generatedToken = await _tokenVerifyService.GenerateToken(user);
+                await _emailService.SendEmailAsync(user.Email!, "تأكيد بريدك الإلكتروني", Body);
+                var generatedToken = await _tokenVerifyService.GenerateToken(user);
 
-                    Response.Cookies.Append("token", generatedToken, new CookieOptions
-                    {
-                        HttpOnly = true,
-                        Secure = true,
-                        SameSite = SameSiteMode.None,
-                        Expires = DateTime.UtcNow.AddMinutes(30),
-                        Domain = ".takhleesak.com",
-                        Path = "/"
-                    });
+                Response.Cookies.Append("token", generatedToken, new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.None,
+                    Expires = DateTime.UtcNow.AddMinutes(30),
+                    Domain = ".takhleesak.com",
+                    Path = "/"
+                });
 
 
-                    return Ok(new ApiResponse { Message = "تم تسجيل حساب الأعمال بنجاح", Data = "VerifyCompanyEmail" });
-                }
-
-                return BadRequest(new ApiResponse { Message = "فشل في التسجيل" });
+                return Ok(new ApiResponse { Message = "تم تسجيل حساب الأعمال بنجاح", Data = "VerifyCompanyEmail" });
             }
-            catch (Exception)
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "فشل في التسجيل" });
-            }
+
+            return BadRequest(new ApiResponse { Message = "فشل في التسجيل" });
         }
 
         //انشاء حساب للمخلصين
         [HttpPost("Register-Broker")]
         public async Task<IActionResult> RegisterBroker([FromBody] BrokerDTO brokerDTO)
         {
-            try
+
+            var existingUser = await _userManager.Users
+                .AnyAsync(u => u.Email == brokerDTO.Email || u.PhoneNumber == brokerDTO.phoneNumber);
+
+            if (existingUser)
             {
+                return BadRequest(new ApiResponse { Message = "الرقم او البريد مستخدم بالفعل" });
+            }
 
-                var existingUser = await _userManager.Users
-                    .AnyAsync(u => u.Email == brokerDTO.Email || u.PhoneNumber == brokerDTO.phoneNumber);
+            if (brokerDTO.Password != brokerDTO.Confirm)
+            {
+                return BadRequest(new ApiResponse { Message = "كلمة المرور وتأكيد كلمة المرور غير متطابقتين" });
+            }
 
-                if (existingUser)
-                {
-                    return BadRequest(new ApiResponse { Message = "الرقم او البريد مستخدم بالفعل" });
-                }
+            if (string.IsNullOrEmpty(brokerDTO.taxRecord) || string.IsNullOrEmpty(brokerDTO.InsuranceNumber))
+            {
+                return BadRequest(new ApiResponse { Message = "يجب تعبئة جميع الحقول المطلوبة" });
+            }
 
-                if (brokerDTO.Password != brokerDTO.Confirm)
-                {
-                    return BadRequest(new ApiResponse { Message = "كلمة المرور وتأكيد كلمة المرور غير متطابقتين" });
-                }
+            var user = new User
+            {
+                fullName = brokerDTO.fullName,
+                Email = brokerDTO.Email,
+                PhoneNumber = brokerDTO.phoneNumber,
+                UserName = Guid.NewGuid().ToString(),
+                Identity = brokerDTO.Identity,
+                taxRecord = brokerDTO.taxRecord,
+                InsuranceNumber = brokerDTO.InsuranceNumber,
+                license = brokerDTO.license,
+            };
 
-                if (string.IsNullOrEmpty(brokerDTO.taxRecord) || string.IsNullOrEmpty(brokerDTO.InsuranceNumber))
-                {
-                    return BadRequest(new ApiResponse { Message = "يجب تعبئة جميع الحقول المطلوبة" });
-                }
-
-                var user = new User
-                {
-                    fullName = brokerDTO.fullName,
-                    Email = brokerDTO.Email,
-                    PhoneNumber = brokerDTO.phoneNumber,
-                    UserName = Guid.NewGuid().ToString(),
-                    Identity = brokerDTO.Identity,
-                    taxRecord = brokerDTO.taxRecord,
-                    InsuranceNumber = brokerDTO.InsuranceNumber,
-                    license = brokerDTO.license,
-                };
-
-                var result = await _userManager.CreateAsync(user, brokerDTO.Password!);
-                if (result.Succeeded)
-                {
-                    await _userManager.AddToRoleAsync(user, "Broker");
-                    var verifyCode = await new Functions(_userManager, _db, _httpContextAccessor, _httpClient).GenerateVerifyCode(user, "VerifyBrokerEmail")!;
-                    var Body = string.Format(@"
+            var result = await _userManager.CreateAsync(user, brokerDTO.Password!);
+            if (result.Succeeded)
+            {
+                await _userManager.AddToRoleAsync(user, "Broker");
+                var verifyCode = await new Functions(_userManager, _db, _httpContextAccessor, _httpClient).GenerateVerifyCode(user, "VerifyBrokerEmail")!;
+                var Body = string.Format(@"
 <!DOCTYPE html>
 <html lang=""ar"">
 <head>
@@ -270,27 +254,22 @@ namespace firstProject.Controllers
     </div>
 </body>
 </html>", verifyCode);
-                    await _emailService.SendEmailAsync(user.Email!, "تأكيد بريدك الإلكتروني", Body);
-                    var generatedToken = await _tokenVerifyService.GenerateToken(user);
+                await _emailService.SendEmailAsync(user.Email!, "تأكيد بريدك الإلكتروني", Body);
+                var generatedToken = await _tokenVerifyService.GenerateToken(user);
 
-                    Response.Cookies.Append("token", generatedToken, new CookieOptions
-                    {
-                        HttpOnly = true,
-                        Secure = true,
-                        SameSite = SameSiteMode.None,
-                        Expires = DateTime.UtcNow.AddMinutes(30),
-                        Domain = ".takhleesak.com",
-                        Path = "/"
-                    });
-                    return Ok(new ApiResponse { Message = "تم تسجيل حساب المخلصين بنجاح", Data = "VerifyBrokerEmail" });
-                }
+                Response.Cookies.Append("token", generatedToken, new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.None,
+                    Expires = DateTime.UtcNow.AddMinutes(30),
+                    Domain = ".takhleesak.com",
+                    Path = "/"
+                });
+                return Ok(new ApiResponse { Message = "تم تسجيل حساب المخلصين بنجاح", Data = "VerifyBrokerEmail" });
+            }
 
-                return BadRequest(new ApiResponse { Message = "فشل في التسجيل" });
-            }
-            catch (Exception)
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "فشل في التسجيل" });
-            }
+            return BadRequest(new ApiResponse { Message = "فشل في التسجيل" });
         }
     }
 }

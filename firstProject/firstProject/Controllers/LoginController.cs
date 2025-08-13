@@ -37,8 +37,7 @@ namespace firstProject.Controllers
                 return BadRequest(new ApiResponse { Message = "يجب إدخال البريد الإلكتروني وكلمة المرور" });
             }
 
-            try
-            {
+            
                 var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Email == loginDTO.Email);
                 if (user == null || await _userManager.IsLockedOutAsync(user) || user.isBlocked == true || user.isActive == false)
                 {
@@ -108,11 +107,6 @@ namespace firstProject.Controllers
                     Data = rolesString,
                     State = "VerifyLogin"
                 });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "فشل في تسجيل الدخول" ,Data = ex.Message});
-            }
         }
     }
 }

@@ -22,19 +22,53 @@ namespace firstProject.Controllers
         [HttpPost("Select-Data")]
         public async Task<IActionResult> selectData([FromBody] GetID getID)
         {
-            try
+            if (getID.ID == null) {
+                return BadRequest(new ApiResponse { Message = "برجاء ملئ البيانات المطلوبة" });
+            }
+            var data = await _userManager.FindByIdAsync(getID.ID!);
+
+            if (data == null)
             {
-                if (getID.ID == null) {
-                    return BadRequest(new ApiResponse { Message = "برجاء ملئ البيانات المطلوبة" });
-                }
-                var data = await _userManager.FindByIdAsync(getID.ID!);
+                return NotFound(new ApiResponse { Message = "بيانات المستخدم غير موجودة" });
+            }
 
-                if (data == null)
-                {
-                    return NotFound(new ApiResponse { Message = "بيانات المستخدم غير موجودة" });
-                }
+            var CustomData = new SelectDTO
+            {
+                Id = data.Id,
+                fullName = data.fullName,
+                Email = data.Email,
+                PhoneNumber = data.PhoneNumber,
+                taxRecord = data.taxRecord,
+                InsuranceNumber = data.InsuranceNumber,
+                license = data.license,
+                Identity = data.Identity,
+            };
+            return Ok(CustomData);
+        }
 
-                var CustomData = new SelectDTO
+        //جلب بيانات المستخدمين
+        [Authorize]
+        [HttpPost("Select-Broker-User")]
+        public async Task<IActionResult> selectBrokerUser([FromBody] GetID getID)
+        {
+            if (string.IsNullOrEmpty(getID.ID) && string.IsNullOrEmpty(getID.BrokerID))
+            {
+                return BadRequest(new ApiResponse { Message = "برجاء ملء البيانات المطلوبة" });
+            }
+
+
+            var data = await _userManager.FindByIdAsync(getID.ID!);
+            var data1 = await _userManager.FindByIdAsync(getID.BrokerID!);
+
+
+            if (data == null && data1 == null)
+            {
+                return NotFound(new ApiResponse { Message = "بيانات المستخدم غير موجودة" });
+            }
+
+            var response = new
+            {
+                User = data != null ? new SelectDTO
                 {
                     Id = data.Id,
                     fullName = data.fullName,
@@ -43,71 +77,23 @@ namespace firstProject.Controllers
                     taxRecord = data.taxRecord,
                     InsuranceNumber = data.InsuranceNumber,
                     license = data.license,
-                    Identity = data.Identity,
-                };
-                return Ok(CustomData);
-            }
-            catch (Exception)
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ أثناء العملية" });
-            }
-        }
+                    Identity = data.Identity
+                } : null,
 
-        //جلب بيانات المستخدمين
-        [Authorize]
-        [HttpPost("Select-Broker-User")]
-        public async Task<IActionResult> selectBrokerUser([FromBody] GetID getID)
-        {
-            try
-            {
-                if (string.IsNullOrEmpty(getID.ID) && string.IsNullOrEmpty(getID.BrokerID))
+                Broker = data1 != null ? new SelectDTO
                 {
-                    return BadRequest(new ApiResponse { Message = "برجاء ملء البيانات المطلوبة" });
-                }
+                    Id = data1.Id,
+                    fullName = data1.fullName,
+                    Email = data1.Email,
+                    PhoneNumber = data1.PhoneNumber,
+                    taxRecord = data1.taxRecord,
+                    InsuranceNumber = data1.InsuranceNumber,
+                    license = data1.license,
+                    Identity = data1.Identity
+                } : null
+            };
 
-
-                var data = await _userManager.FindByIdAsync(getID.ID!);
-                var data1 = await _userManager.FindByIdAsync(getID.BrokerID!);
-
-
-                if (data == null && data1 == null)
-                {
-                    return NotFound(new ApiResponse { Message = "بيانات المستخدم غير موجودة" });
-                }
-
-                var response = new
-                {
-                    User = data != null ? new SelectDTO
-                    {
-                        Id = data.Id,
-                        fullName = data.fullName,
-                        Email = data.Email,
-                        PhoneNumber = data.PhoneNumber,
-                        taxRecord = data.taxRecord,
-                        InsuranceNumber = data.InsuranceNumber,
-                        license = data.license,
-                        Identity = data.Identity
-                    } : null,
-
-                    Broker = data1 != null ? new SelectDTO
-                    {
-                        Id = data1.Id,
-                        fullName = data1.fullName,
-                        Email = data1.Email,
-                        PhoneNumber = data1.PhoneNumber,
-                        taxRecord = data1.taxRecord,
-                        InsuranceNumber = data1.InsuranceNumber,
-                        license = data1.license,
-                        Identity = data1.Identity
-                    } : null
-                };
-
-                return Ok(response);
-            }
-            catch (Exception)
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ أثناء العملية" });
-            }
+            return Ok(response);
         }
     }
  }

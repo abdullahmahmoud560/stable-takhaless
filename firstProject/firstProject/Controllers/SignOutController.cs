@@ -9,8 +9,6 @@ namespace firstProject.Controllers
     {
         [Authorize]
         [HttpGet("Logout")]
-
-        //تسجيل الخروج
         public IActionResult Logout()
         {
             Response.Cookies.Append("token", "", new CookieOptions

@@ -32,44 +32,22 @@ namespace firstProject.Controllers
         [HttpPost("VerifyCode")]
         public async Task<IActionResult> VerifyCode(VerifyCode verifyCode)
         {
-            try
+            var ID = User.FindFirstValue("ID");
+            var user = await _userManager.FindByIdAsync(ID!);
+            var time = await _context.twoFactorVerify.Where(l => l.UserId == user!.Id && l.Name == verifyCode.typeOfGenerate).Select(g => new { g.Date, g.Value }).FirstOrDefaultAsync();
+            bool isCodeValid = BCrypt.Net.BCrypt.Verify(verifyCode.Code, time!.Value);
+            bool isCodeExpired = (DateTime.UtcNow - time.Date!.Date) > TimeSpan.FromMinutes(2);
+
+            if (isCodeValid && isCodeExpired && user!.isBlocked == false)
             {
-                var ID = User.FindFirstValue("ID");
-                var user = await _userManager.FindByIdAsync(ID!);
-                var time = await _context.twoFactorVerify.Where(l => l.UserId == user!.Id && l.Name == verifyCode.typeOfGenerate).Select(g => new { g.Date, g.Value }).FirstOrDefaultAsync();
-                bool isCodeValid = BCrypt.Net.BCrypt.Verify(verifyCode.Code, time!.Value);
-                bool isCodeExpired = (DateTime.UtcNow - time.Date!.Date) > TimeSpan.FromMinutes(2);
-
-                if (isCodeValid && isCodeExpired && user!.isBlocked == false)
+                var tokenService = new Token(_userManager);
+                var Role = await _userManager.GetRolesAsync(user);
+                var rolesString = string.Join(", ", Role);
+                if (verifyCode.typeOfGenerate == "VerifyUserEmail" || verifyCode.typeOfGenerate == "VerifyCompanyEmail" || verifyCode.typeOfGenerate == "VerifyBrokerEmail")
                 {
-                    var tokenService = new Token(_userManager);
-                    var Role = await _userManager.GetRolesAsync(user);
-                    var rolesString = string.Join(", ", Role);
-                    if (verifyCode.typeOfGenerate == "VerifyUserEmail" || verifyCode.typeOfGenerate == "VerifyCompanyEmail" || verifyCode.typeOfGenerate == "VerifyBrokerEmail")
-                    {
-                        user.isActive = true;
-                        await _userManager.UpdateAsync(user);
-                        var token = await tokenService.GenerateToken(user);
-                        Response.Cookies.Append("token", "", new CookieOptions
-                        {
-                            Expires = DateTimeOffset.UtcNow.AddDays(-1),
-                            Domain = ".takhleesak.com",
-                            Secure = true,
-                            HttpOnly = true,
-                            SameSite = SameSiteMode.None
-                        });
-                        Response.Cookies.Append("token", token, new CookieOptions
-                        {
-                            HttpOnly = true,
-                            Secure = true,
-                            SameSite = SameSiteMode.None,
-                            Expires = DateTime.UtcNow.AddDays(7),
-                            Domain = ".takhleesak.com",
-                        });
-
-                        return Ok(new ApiResponse { Message = "تم تأكيد البريد الإلكتروني بنجاح" ,Data =rolesString });
-                    }
-                    var generatedToken = await tokenService.GenerateToken(user);
+                    user.isActive = true;
+                    await _userManager.UpdateAsync(user);
+                    var token = await tokenService.GenerateToken(user);
                     Response.Cookies.Append("token", "", new CookieOptions
                     {
                         Expires = DateTimeOffset.UtcNow.AddDays(-1),
@@ -78,8 +56,7 @@ namespace firstProject.Controllers
                         HttpOnly = true,
                         SameSite = SameSiteMode.None
                     });
-
-                    Response.Cookies.Append("token", generatedToken, new CookieOptions
+                    Response.Cookies.Append("token", token, new CookieOptions
                     {
                         HttpOnly = true,
                         Secure = true,
@@ -87,28 +64,42 @@ namespace firstProject.Controllers
                         Expires = DateTime.UtcNow.AddDays(7),
                         Domain = ".takhleesak.com",
                     });
-                    return Ok(new ApiResponse { Message = "تم تأكيد الكود بنجاح", Data = rolesString });
-                }
 
-                return BadRequest(new ApiResponse { Message = "فشل" , Data =isCodeValid});
+                    return Ok(new ApiResponse { Message = "تم تأكيد البريد الإلكتروني بنجاح" ,Data =rolesString });
+                }
+                var generatedToken = await tokenService.GenerateToken(user);
+                Response.Cookies.Append("token", "", new CookieOptions
+                {
+                    Expires = DateTimeOffset.UtcNow.AddDays(-1),
+                    Domain = ".takhleesak.com",
+                    Secure = true,
+                    HttpOnly = true,
+                    SameSite = SameSiteMode.None
+                });
+
+                Response.Cookies.Append("token", generatedToken, new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.None,
+                    Expires = DateTime.UtcNow.AddDays(7),
+                    Domain = ".takhleesak.com",
+                });
+                return Ok(new ApiResponse { Message = "تم تأكيد الكود بنجاح", Data = rolesString });
             }
-            catch (Exception)
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق" });
-            }
+
+            return BadRequest(new ApiResponse { Message = "فشل" , Data =isCodeValid});
         }
 
         [Authorize]
         [HttpGet("Resend-Code")]
         public async Task<IActionResult> resendCode()
         {
-            try
-            {
-                var ID = User.FindFirstValue("ID");
-                var user = await _userManager.FindByIdAsync(ID!);
-                var name = await _context.twoFactorVerify.Where(l => l.UserId == ID).Select(g=>g.Name).FirstOrDefaultAsync();
-                var verifyCode = await new Functions(_userManager, _context, _httpContextAccessor, _httpClient).GenerateVerifyCode(user!,name!)!;
-                var Body = string.Format(@"
+            var ID = User.FindFirstValue("ID");
+            var user = await _userManager.FindByIdAsync(ID!);
+            var name = await _context.twoFactorVerify.Where(l => l.UserId == ID).Select(g=>g.Name).FirstOrDefaultAsync();
+            var verifyCode = await new Functions(_userManager, _context, _httpContextAccessor, _httpClient).GenerateVerifyCode(user!,name!)!;
+            var Body = string.Format(@"
 <!DOCTYPE html>
 <html lang=""ar"" dir=""rtl"">
 <head>
@@ -137,13 +128,8 @@ namespace firstProject.Controllers
     </div>
 </body>
 </html>", verifyCode);
-                await _emailService.SendEmailAsync(user!.Email!, "طلب رمز التحقق مرة أخري", Body);
-                return Ok(new ApiResponse { Message = "تم ارسال الكود بنجاح"});
-            }
-            catch (Exception)
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse { Message = "حدث خطأ برجاء المحاولة فى وقت لاحق" });
-            }
+            await _emailService.SendEmailAsync(user!.Email!, "طلب رمز التحقق مرة أخري", Body);
+            return Ok(new ApiResponse { Message = "تم ارسال الكود بنجاح"});
         }
     }
 }

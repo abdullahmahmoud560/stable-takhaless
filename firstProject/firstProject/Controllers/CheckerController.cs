@@ -10,12 +10,10 @@ namespace firstProject.Controllers
     public class CheckerCOntroller : ControllerBase
     {
         private readonly UserManager<User> _userManager;
-        private readonly EmailService _emailService;
 
-        public CheckerCOntroller(UserManager<User> userManager, EmailService emailService)
+        public CheckerCOntroller(UserManager<User> userManager)
         {
             _userManager = userManager;
-            _emailService = emailService;
         }
 
 

@@ -1,14 +1,15 @@
-﻿using System.Text;
+﻿using AspNetCoreRateLimit;
+using DotNetEnv;
 using firstProject.ApplicationDbContext;
+using firstProject.DTO;
+using firstProject.Exceptions;
 using firstProject.Model;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using AspNetCoreRateLimit;
-using firstProject.DTO;
-using DotNetEnv;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 Env.Load();
@@ -75,6 +76,15 @@ builder.Services.AddAuthentication(options =>
     {
         OnMessageReceived = context =>
         {
+            // 1️⃣ جرب تاخد من Authorization header
+            //var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
+            //if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer "))
+            //{
+            //    context.Token = authHeader.Substring("Bearer ".Length).Trim();
+            //    return Task.CompletedTask;
+            //}
+
+            //Cookies
             var token = context.Request.Cookies["token"];
             if (!string.IsNullOrEmpty(token))
             {
@@ -133,29 +143,26 @@ builder.Services.AddCors(options =>
                   .AllowAnyMethod();
         });
 });
+
 builder.Services.AddMemoryCache();
 
 var app = builder.Build();
 
-// ✅ 1️⃣ Health Checks
 app.MapHealthChecks("/health");
 
+app.UseGlobalExceptionHandler();
 
-// ✅ 2️⃣ تفعيل تحديد المعدل (Rate Limiting) قبل أي Middleware يعتمد على الطلبات
 app.UseIpRateLimiting();
+
 app.UseHttpsRedirection();
 
-// ✅ 3️⃣ تفعيل التوجيه
 app.UseRouting();
 
-// ✅ 4️⃣ تفعيل CORS قبل المصادقة والتفويض
 app.UseCors("MyCors");
 
-// ✅ 5️⃣ تفعيل المصادقة والتفويض
 app.UseAuthentication();
 app.UseAuthorization();
 
-// ✅ 6️⃣ تطبيق Middleware خاص على المسارات المحمية
 var protectedRoutes = new[]
 {
     "/api/Reset-Password",
@@ -181,12 +188,9 @@ app.UseWhen(
     appBuilder => appBuilder.UseMiddleware<AuthenticationMiddleware>()
 );
 
-// ✅ 7️⃣ تفعيل Swagger قبل MapControllers
 app.UseSwagger();
 app.UseSwaggerUI();
 
-// ✅ 8️⃣ تفعيل التوجيه النهائي والتحكم في الـ API
 app.MapControllers();
 
-// ✅ 9️⃣ تشغيل التطبيق
 app.Run();
