@@ -1,4 +1,5 @@
 ﻿using DotNetEnv;
+using firstProject.Exceptions;
 using Hangfire;
 using Hangfire.Dashboard;
 using Hangfire.MySql;
@@ -94,7 +95,7 @@ builder.Services.AddScoped<EmailService>();
 
 builder.Services.AddHangfire(config =>
     config.UseStorage(new MySqlStorage(
-       Environment.GetEnvironmentVariable("ConnectionStrings__HangFire")!,
+       Environment.GetEnvironmentVariable("ConnectionStrings__HangeFire")!,
         new MySqlStorageOptions
         {
             QueuePollInterval = TimeSpan.FromMinutes(15),
@@ -120,6 +121,7 @@ app.UseSwaggerUI();
 app.UseCors("MyCors");
 app.UseRouting();
 app.MapHealthChecks("/health");
+app.UseGlobalExceptionHandler();
 app.UseAuthentication();
 app.UseAuthorization();
 

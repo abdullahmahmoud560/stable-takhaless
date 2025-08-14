@@ -1,5 +1,6 @@
 ﻿using CustomerSerrvices.Extensions;
 using DotNetEnv;
+using firstProject.Exceptions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,6 +15,7 @@ var app = builder.Build();
 
 app.UseSwagger();
 app.UseSwaggerUI();
+app.UseGlobalExceptionHandler();
 app.UseHttpsRedirection();
 app.UseRouting();
 app.UseCors("MyCors");

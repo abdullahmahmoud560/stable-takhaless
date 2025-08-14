@@ -46,29 +46,10 @@ namespace CustomerSerrvices.Controllers
         [HttpGet("Get-Form/{page}")]
         public async Task<IActionResult> GetForms(int page)
         {
-            try
-            {
-                const int pageSize = 10;
-                var result = await _formService.GetFormsAsync(page, pageSize);
-                return Ok(result);
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new ApiResponse 
-                { 
-                    Message = ex.Message,
-                    State = "Error"
-                });
-            }
-            catch (Exception)
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError, 
-                    new ApiResponse 
-                    { 
-                        Message = "حدث خطأ، برجاء المحاولة لاحقًا",
-                        State = "Error"
-                    });
-            }
+
+            const int pageSize = 10;
+            var result = await _formService.GetFormsAsync(page, pageSize);
+            return Ok(result);
         }
     }
 }

@@ -2,7 +2,6 @@
 using Admin.DTO;
 using Admin.Helpers;
 using Admin.Model;
-using Admin.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -33,8 +32,7 @@ namespace Admin.Controllers
                 return ErrorHandler.HandleValidationError("رقم الصفحة غير صحيح");
             }
 
-            try
-            {
+            
                 var paginationResult = await GetPaginatedLogs(NewOrderId, Page);
                 if (!paginationResult.IsSuccess)
                 {
@@ -42,11 +40,7 @@ namespace Admin.Controllers
                 }
 
                 return Ok(paginationResult.Data);
-            }
-            catch (Exception ex)
-            {
-                return ErrorHandler.HandleException(ex);
-            }
+           
         }
 
         [Authorize]
@@ -63,18 +57,13 @@ namespace Admin.Controllers
                 return ErrorHandler.HandleValidationError("معرف المستخدم غير صحيح");
             }
 
-            try
-            {
+            
                 var log = addLogs.ToLog();
                 _db.Logs.Add(log);
                 await _db.SaveChangesAsync();
                 
                 return Ok(ApiResponse.Success("تم إضافة السجل بنجاح"));
-            }
-            catch (Exception ex)
-            {
-                return ErrorHandler.HandleException(ex, "حدث خطأ أثناء إضافة السجل");
-            }
+            
         }
 
         private async Task<ApiResult<object>> GetPaginatedLogs(int newOrderId, int page)

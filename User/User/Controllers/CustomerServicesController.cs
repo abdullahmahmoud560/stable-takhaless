@@ -19,7 +19,6 @@ namespace User.Controllers
         private readonly IWebHostEnvironment _env;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private const int PageSize = 10;
-        private const string ErrorMessage = "حدث خطأ برجاء المحاولة فى وقت لاحق";
 
         public CustomerServicesController(DB db, Functions functions, IWebHostEnvironment env, IHttpContextAccessor httpContextAccessor)
         {
@@ -28,8 +27,6 @@ namespace User.Controllers
             _env = env;
             _httpContextAccessor = httpContextAccessor;
         }
-
-        #region Helper Methods
 
         private static CultureInfo GetArabicCulture() => new("ar-SA")
         {
@@ -129,11 +126,7 @@ namespace User.Controllers
             };
         }
 
-        private async Task<IActionResult> HandleExceptionAsync(Exception ex)
-        {
-            return await Task.FromResult(StatusCode(StatusCodes.Status500InternalServerError, 
-                new ApiResponse { Message = ErrorMessage }));
-        }
+
 
         private async Task CreateLogAsync(string userId, int orderId, string message, string notes = "")
         {
@@ -177,162 +170,125 @@ namespace User.Controllers
             return $"{baseUrl}/CustomerFiles/{uniqueFileName}";
         }
 
-        #endregion
-
-        #region Get Orders Methods
-
         [Authorize(Roles = "CustomerService,Admin,Manager")]
         [HttpGet("Get-All-Accept-Orders/{Page}")]
         public async Task<IActionResult> GetAllAcceptOrders(int Page)
         {
-            try
+            var culture = GetArabicCulture();
+            var baseQuery = GetOrdersQuery("منفذ", nameof(NewOrder.numberOfTypeOrders), nameof(NewOrder.NotesCustomerServices));
+            var totalCount = await baseQuery.CountAsync();
+            var orders = await baseQuery.Skip((Page - 1) * PageSize).Take(PageSize).ToListAsync();
+
+            var userData = await GetUserDataAsync(orders.Select(o => o.UserId).ToList());
+
+            var result = orders.Select(order =>
             {
-                var culture = GetArabicCulture();
-                var baseQuery = GetOrdersQuery("منفذ", nameof(NewOrder.numberOfTypeOrders), nameof(NewOrder.NotesCustomerServices));
-                var totalCount = await baseQuery.CountAsync();
-                var orders = await baseQuery.Skip((Page - 1) * PageSize).Take(PageSize).ToListAsync();
+                var (name, email) = userData.GetValueOrDefault(order.UserId!, ("", ""));
+                return MapOrderToDTO(order, culture, name, email, 
+                    notes: order.NotesCustomerServices?.FirstOrDefault()?.Notes ?? "");
+            }).ToList();
 
-                var userData = await GetUserDataAsync(orders.Select(o => o.UserId).ToList());
-
-                var result = orders.Select(order =>
-                {
-                    var (name, email) = userData.GetValueOrDefault(order.UserId!, ("", ""));
-                    return MapOrderToDTO(order, culture, name, email, 
-                        notes: order.NotesCustomerServices?.FirstOrDefault()?.Notes ?? "");
-                }).ToList();
-
-                return Ok(CreatePagedResponse(Page, totalCount, result));
-            }
-            catch (Exception ex)
-            {
-                return await HandleExceptionAsync(ex);
-            }
+            return Ok(CreatePagedResponse(Page, totalCount, result));
         }
 
         [Authorize(Roles = "CustomerService,Admin,Manager")]
         [HttpGet("Get-All-Refuse-Orders/{Page}")]
         public async Task<IActionResult> GetAllRefusedOrders(int Page)
         {
-            try
+            var culture = GetArabicCulture();
+            var baseQuery = GetOrdersQuery("ملغى", nameof(NewOrder.numberOfTypeOrders));
+            var totalCount = await baseQuery.CountAsync();
+            var orders = await baseQuery.Skip((Page - 1) * PageSize).Take(PageSize).ToListAsync();
+
+            var userData = await GetUserDataAsync(orders.Select(o => o.UserId).ToList());
+
+            var result = orders.Select(order =>
             {
-                var culture = GetArabicCulture();
-                var baseQuery = GetOrdersQuery("ملغى", nameof(NewOrder.numberOfTypeOrders));
-                var totalCount = await baseQuery.CountAsync();
-                var orders = await baseQuery.Skip((Page - 1) * PageSize).Take(PageSize).ToListAsync();
+                var (name, email) = userData.GetValueOrDefault(order.UserId!, ("", ""));
+                return MapOrderToDTO(order, culture, name, email);
+            }).ToList();
 
-                var userData = await GetUserDataAsync(orders.Select(o => o.UserId).ToList());
-
-                var result = orders.Select(order =>
-                {
-                    var (name, email) = userData.GetValueOrDefault(order.UserId!, ("", ""));
-                    return MapOrderToDTO(order, culture, name, email);
-                }).ToList();
-
-                return Ok(CreatePagedResponse(Page, totalCount, result));
-            }
-            catch (Exception ex)
-            {
-                return await HandleExceptionAsync(ex);
-            }
+            return Ok(CreatePagedResponse(Page, totalCount, result));
         }
 
         [Authorize(Roles = "CustomerService,Admin,Manager")]
         [HttpGet("Get-All-Transfer-From-Account/{Page}")]
         public async Task<IActionResult> GetAllTransferFromAccount(int Page)
         {
-            try
+            var culture = GetArabicCulture();
+            var baseQuery = GetOrdersQuery("لم يتم التحويل", nameof(NewOrder.numberOfTypeOrders), nameof(NewOrder.NotesCustomerServices));
+            var totalCount = await baseQuery.CountAsync();
+            var orders = await baseQuery.Skip((Page - 1) * PageSize).Take(PageSize).ToListAsync();
+
+            var userBrokerData = await GetUserBrokerDataAsync(orders, 
+                order => (order.Accept, order.AcceptAccount));
+
+            var result = orders.Select(order =>
             {
-                var culture = GetArabicCulture();
-                var baseQuery = GetOrdersQuery("لم يتم التحويل", nameof(NewOrder.numberOfTypeOrders), nameof(NewOrder.NotesCustomerServices));
-                var totalCount = await baseQuery.CountAsync();
-                var orders = await baseQuery.Skip((Page - 1) * PageSize).Take(PageSize).ToListAsync();
+                var key = $"{order.Accept}_{order.AcceptAccount}";
+                var response = userBrokerData.GetValueOrDefault(key);
 
-                var userBrokerData = await GetUserBrokerDataAsync(orders, 
-                    order => (order.Accept, order.AcceptAccount));
-
-                var result = orders.Select(order =>
+                if (response.TryGetProperty("user", out JsonElement user) &&
+                    response.TryGetProperty("broker", out JsonElement account) &&
+                    user.TryGetProperty("fullName", out JsonElement userName) &&
+                    user.TryGetProperty("email", out JsonElement userEmail) &&
+                    account.TryGetProperty("fullName", out JsonElement accountName) &&
+                    account.TryGetProperty("email", out JsonElement accountEmail))
                 {
-                    var key = $"{order.Accept}_{order.AcceptAccount}";
-                    var response = userBrokerData.GetValueOrDefault(key);
+                    return MapOrderToDTO(order, culture, 
+                        userName.ToString(), userEmail.ToString(),
+                        accountName.ToString(), accountEmail.ToString(),
+                        notes: order.notesAccountings?.FirstOrDefault()?.Notes ?? "");
+                }
 
-                    if (response.TryGetProperty("user", out JsonElement user) &&
-                        response.TryGetProperty("broker", out JsonElement account) &&
-                        user.TryGetProperty("fullName", out JsonElement userName) &&
-                        user.TryGetProperty("email", out JsonElement userEmail) &&
-                        account.TryGetProperty("fullName", out JsonElement accountName) &&
-                        account.TryGetProperty("email", out JsonElement accountEmail))
-                    {
-                        return MapOrderToDTO(order, culture, 
-                            userName.ToString(), userEmail.ToString(),
-                            accountName.ToString(), accountEmail.ToString(),
-                            notes: order.notesAccountings?.FirstOrDefault()?.Notes ?? "");
-                    }
+                return MapOrderToDTO(order, culture);
+            }).ToList();
 
-                    return MapOrderToDTO(order, culture);
-                }).ToList();
-
-                return Ok(CreatePagedResponse(Page, totalCount, result));
-            }
-            catch (Exception ex)
-            {
-                return await HandleExceptionAsync(ex);
-            }
+            return Ok(CreatePagedResponse(Page, totalCount, result));
         }
 
         [Authorize(Roles = "CustomerService,Admin,Manager")]
         [HttpGet("Get-Deleted-Orders/{Page}")]
         public async Task<IActionResult> GetDeletedOrders(int Page)
         {
-            try
+            var culture = GetArabicCulture();
+            var baseQuery = GetOrdersQuery("محذوفة", nameof(NewOrder.numberOfTypeOrders));
+            var totalCount = await baseQuery.CountAsync();
+            var orders = await baseQuery.Skip((Page - 1) * PageSize).Take(PageSize).ToListAsync();
+
+            var userCustomerServiceData = await GetUserBrokerDataAsync(orders, 
+                order => (order.UserId, order.AcceptCustomerService));
+
+            var result = orders.Select(order =>
             {
-                var culture = GetArabicCulture();
-                var baseQuery = GetOrdersQuery("محذوفة", nameof(NewOrder.numberOfTypeOrders));
-                var totalCount = await baseQuery.CountAsync();
-                var orders = await baseQuery.Skip((Page - 1) * PageSize).Take(PageSize).ToListAsync();
+                var key = $"{order.UserId}_{order.AcceptCustomerService}";
+                var response = userCustomerServiceData.GetValueOrDefault(key);
 
-                var userCustomerServiceData = await GetUserBrokerDataAsync(orders, 
-                    order => (order.UserId, order.AcceptCustomerService));
-
-                var result = orders.Select(order =>
+                if (response.TryGetProperty("user", out JsonElement user) &&
+                    response.TryGetProperty("broker", out JsonElement customerService) &&
+                    user.TryGetProperty("fullName", out JsonElement userName) &&
+                    user.TryGetProperty("email", out JsonElement userEmail) &&
+                    customerService.TryGetProperty("fullName", out JsonElement customerServiceName) &&
+                    customerService.TryGetProperty("email", out JsonElement customerServiceEmail))
                 {
-                    var key = $"{order.UserId}_{order.AcceptCustomerService}";
-                    var response = userCustomerServiceData.GetValueOrDefault(key);
+                    return MapOrderToDTO(order, culture, 
+                        userName.ToString(), userEmail.ToString(),
+                        customerServiceName: customerServiceName.ToString(),
+                        customerServiceEmail: customerServiceEmail.ToString(),
+                        notes: order.Notes);
+                }
 
-                    if (response.TryGetProperty("user", out JsonElement user) &&
-                        response.TryGetProperty("broker", out JsonElement customerService) &&
-                        user.TryGetProperty("fullName", out JsonElement userName) &&
-                        user.TryGetProperty("email", out JsonElement userEmail) &&
-                        customerService.TryGetProperty("fullName", out JsonElement customerServiceName) &&
-                        customerService.TryGetProperty("email", out JsonElement customerServiceEmail))
-                    {
-                        return MapOrderToDTO(order, culture, 
-                            userName.ToString(), userEmail.ToString(),
-                            customerServiceName: customerServiceName.ToString(),
-                            customerServiceEmail: customerServiceEmail.ToString(),
-                            notes: order.Notes);
-                    }
+                return MapOrderToDTO(order, culture, notes: order.Notes);
+            }).ToList();
 
-                    return MapOrderToDTO(order, culture, notes: order.Notes);
-                }).ToList();
-
-                return Ok(CreatePagedResponse(Page, totalCount, result));
-            }
-            catch (Exception ex)
-            {
-                return await HandleExceptionAsync(ex);
-            }
+            return Ok(CreatePagedResponse(Page, totalCount, result));
         }
-
-        #endregion
-
-        #region Change Status Methods
 
         [Authorize(Roles = "CustomerService,Admin,Manager")]
         [HttpPost("Change-Statu-CustomerService")]
         public async Task<IActionResult> ChangeStatusCustomerService(GetID getID)
         {
-            try
-            {
+            
                 var userId = GetCurrentUserId();
                 var order = await GetOrderByIdAsync(getID.ID);
                 
@@ -358,23 +314,13 @@ namespace User.Controllers
                 }
 
                 return BadRequest(new ApiResponse { Message = "بيانات غير صحيحة" });
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return BadRequest(new ApiResponse { Message = "لم يتم العثور على معرف المستخدم في بيانات الاعتماد" });
-            }
-            catch (Exception ex)
-            {
-                return await HandleExceptionAsync(ex);
-            }
         }
 
         [Authorize(Roles = "CustomerService,Admin")]
         [HttpPost("Change-Statu-CustomerService-Broker")]
         public async Task<IActionResult> ChangeStatusCustomerServiceBroker(GetID getID)
         {
-            try
-            {
+           
                 var userId = GetCurrentUserId();
                 var order = await GetOrderByIdAsync(getID.ID);
                 
@@ -416,28 +362,14 @@ namespace User.Controllers
                     default:
                         return BadRequest(new ApiResponse { Message = "بيانات غير صحيحة" });
                 }
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return BadRequest(new ApiResponse { Message = "لم يتم العثور على معرف المستخدم في بيانات الاعتماد" });
-            }
-            catch (Exception ex)
-            {
-                return await HandleExceptionAsync(ex);
-            }
+            
         }
-
-        #endregion
-
-        #region Notes Methods
 
         [Authorize(Roles = "CustomerService,Broker,Admin,Manager")]
         [HttpPost("Notes-From-CustomerService")]
         public async Task<IActionResult> AddNotesFromCustomerService([FromForm] NotesFromCustomerServiceDTO notesDTO)
         {
-            try
-            {
-                var userId = GetCurrentUserId();
+              var userId = GetCurrentUserId();
                 
                 if (notesDTO == null)
                     return BadRequest(new ApiResponse { Message = "البيانات المرسلة غير صحيحة" });
@@ -487,54 +419,29 @@ namespace User.Controllers
                 }
 
                 return BadRequest(new ApiResponse { Message = "فشل في حفظ الملاحظات" });
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return BadRequest(new ApiResponse { Message = "لم يتم العثور على معرف المستخدم في بيانات الاعتماد" });
-            }
-            catch (Exception ex)
-            {
-                return await HandleExceptionAsync(ex);
-            }
+            
         }
-
-        #endregion
-
-        #region Statistics Methods
 
         [Authorize(Roles = "CustomerService,Admin,Manager")]
         [HttpGet("Number-Of-Operations-CustomerService")]
         public async Task<IActionResult> GetNumberOfOperations()
         {
-            try
-            {
-                var userId = GetCurrentUserId();
-                
-                var statistics = await Task.WhenAll(
-                    _db.newOrders.Where(o => o.statuOrder == "منفذ").CountAsync(),
-                    _db.newOrders.Where(o => o.statuOrder == "ملغى").CountAsync(),
-                    _db.newOrders.Where(o => o.statuOrder == "لم يتم التحويل").CountAsync(),
-                    _db.newOrders.Where(o => o.statuOrder == "محذوفة").CountAsync()
-                );
+            var userId = GetCurrentUserId();
+            
+            var statistics = await Task.WhenAll(
+                _db.newOrders.Where(o => o.statuOrder == "منفذ").CountAsync(),
+                _db.newOrders.Where(o => o.statuOrder == "ملغى").CountAsync(),
+                _db.newOrders.Where(o => o.statuOrder == "لم يتم التحويل").CountAsync(),
+                _db.newOrders.Where(o => o.statuOrder == "محذوفة").CountAsync()
+            );
 
-                return Ok(new
-                {
-                    NumberOfDoneOrders = statistics[0],
-                    NumberOfRefuseOrders = statistics[1],
-                    NumberOfNotDoneOrders = statistics[2],
-                    NumberOfDeletedOrders = statistics[3]
-                });
-            }
-            catch (UnauthorizedAccessException)
+            return Ok(new
             {
-                return BadRequest(new ApiResponse { Message = "لم يتم العثور على معرف المستخدم في بيانات الاعتماد" });
-            }
-            catch (Exception ex)
-            {
-                return await HandleExceptionAsync(ex);
-            }
+                NumberOfDoneOrders = statistics[0],
+                NumberOfRefuseOrders = statistics[1],
+                NumberOfNotDoneOrders = statistics[2],
+                NumberOfDeletedOrders = statistics[3]
+            });
         }
-
-        #endregion
     }
 }

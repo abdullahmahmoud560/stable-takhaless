@@ -1,6 +1,7 @@
 ﻿using Admin.Configuration;
 using Admin.Extensions;
 using DotNetEnv;
+using firstProject.Exceptions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,7 +15,7 @@ var app = builder.Build();
 
 // تكوين Middleware
 ConfigureMiddleware(app);
-
+app.UseGlobalExceptionHandler();
 app.MapControllers();
 app.Run();
 

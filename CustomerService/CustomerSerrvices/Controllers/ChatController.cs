@@ -38,16 +38,11 @@ namespace freelancer.Controllers
         [HttpGet("Get-All-Chats")]
         public async Task<IActionResult> GetAllChats()
         {
-            try
-            {
+       
                 var chatList = await _db.chatSummaries.ToListAsync();
 
                 return Ok(chatList);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            
         }
     }
 
