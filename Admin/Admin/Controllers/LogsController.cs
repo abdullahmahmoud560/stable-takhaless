@@ -83,7 +83,7 @@ namespace Admin.Controllers
                 .ToListAsync();
 
 
-            if (!logs.Any())
+            if (logs.Count()>0)
             {
                 return ApiResult<object>.Success(PaginatedResponse<LogsDTO>.Create(page, pageSize, totalCount, new List<LogsDTO>()));
             }

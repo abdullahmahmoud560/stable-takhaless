@@ -62,7 +62,7 @@ namespace CustomerSerrvices.Extensions
             {
                 options.AddPolicy("MyCors", policy =>
                 {
-                    policy.WithOrigins("https://test.takhleesak.com")
+                    policy.WithOrigins("https://test.takhleesak.com", "https://sender-chat.vercel.app/")
                     .AllowCredentials()
                     .AllowAnyHeader()
                     .AllowAnyMethod();

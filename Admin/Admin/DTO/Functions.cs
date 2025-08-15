@@ -22,10 +22,10 @@ namespace Admin.DTO
                 var token = GetTokenFromCookies();
                 if (!token.IsSuccess)
                 {
-                    return ApiResult<JsonElement>.Failure(token.ErrorMessage);
+                    return ApiResult<JsonElement>.Failure(token.ErrorMessage ?? "Unknown error");
                 }
 
-                SetAuthorizationHeader(token.Data);
+                SetAuthorizationHeader(token.Data!);
 
                 var requestData = new { ID = id };
                 var jsonContent = CreateJsonContent(requestData);
