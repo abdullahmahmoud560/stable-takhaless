@@ -51,8 +51,8 @@ namespace firstProject.Controllers
                     Response.Cookies.Append("token", "", new CookieOptions
                     {
                         Expires = DateTimeOffset.UtcNow.AddDays(-1),
-                        Domain = ".runasp.net",
-                        //Domain = ".takhleesak.com",
+                        //Domain = ".runasp.net",
+                        Domain = ".takhleesak.com",
                         Secure = true,
                         HttpOnly = true,
                         SameSite = SameSiteMode.None
@@ -63,8 +63,8 @@ namespace firstProject.Controllers
                         Secure = true,
                         SameSite = SameSiteMode.None,
                         Expires = DateTime.UtcNow.AddDays(7),
-                        //Domain = ".takhleesak.com",
-                        Domain = ".runasp.net",
+                        Domain = ".takhleesak.com",
+                        //Domain = ".runasp.net",
                     });
 
                     return Ok(new ApiResponse { Message = "تم تأكيد البريد الإلكتروني بنجاح" ,Data =rolesString });
@@ -73,8 +73,8 @@ namespace firstProject.Controllers
                 Response.Cookies.Append("token", "", new CookieOptions
                 {
                     Expires = DateTimeOffset.UtcNow.AddDays(-1),
-                    Domain = ".runasp.net",
-                    //Domain = ".takhleesak.com",
+                    //Domain = ".runasp.net",
+                    Domain = ".takhleesak.com",
                     Secure = true,
                     HttpOnly = true,
                     SameSite = SameSiteMode.None
@@ -86,8 +86,8 @@ namespace firstProject.Controllers
                     Secure = true,
                     SameSite = SameSiteMode.None,
                     Expires = DateTime.UtcNow.AddDays(7),
-                    //Domain = ".takhleesak.com",
-                    Domain = ".runasp.net",
+                    Domain = ".takhleesak.com",
+                    //Domain = ".runasp.net",
                 });
                 return Ok(new ApiResponse { Message = "تم تأكيد الكود بنجاح", Data = rolesString });
             }
