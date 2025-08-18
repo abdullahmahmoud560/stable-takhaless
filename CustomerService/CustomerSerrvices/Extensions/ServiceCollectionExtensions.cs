@@ -1,4 +1,4 @@
-using CustomerSerrvices.ApplicationDbContext;
+﻿using CustomerSerrvices.ApplicationDbContext;
 using CustomerSerrvices.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -44,13 +44,22 @@ namespace CustomerSerrvices.Extensions
                     OnMessageReceived = context =>
                     {
                         var token = context.Request.Cookies["token"];
-                        if (!string.IsNullOrEmpty(token))
+
+                        if (string.IsNullOrEmpty(token))
                         {
-                            context.Token = token;
+                            var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
+                            if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer "))
+                            {
+                                token = authHeader.Substring("Bearer ".Length).Trim();
+                            }
                         }
+
+                        context.Token = token;
+
                         return Task.CompletedTask;
                     }
                 };
+
             });
 
             return services;
@@ -62,7 +71,7 @@ namespace CustomerSerrvices.Extensions
             {
                 options.AddPolicy("MyCors", policy =>
                 {
-                    policy.WithOrigins("https://test.takhleesak.com", "https://sender-chat.vercel.app/")
+                    policy.WithOrigins("https://test.takhleesak.com", "http://localhost:3000")
                     .AllowCredentials()
                     .AllowAnyHeader()
                     .AllowAnyMethod();

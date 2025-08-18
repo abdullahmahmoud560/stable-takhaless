@@ -41,14 +41,14 @@ namespace firstProject.Controllers
                 var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Email == loginDTO.Email);
                 if (user == null || await _userManager.IsLockedOutAsync(user) || user.isBlocked == true || user.isActive == false)
                 {
-                    return Unauthorized(new ApiResponse { Message = "فشل في تسجيل الدخول" });
+                    return Unauthorized(new ApiResponse { Message = "الحساب محظور مؤقتًا" });
                 }
 
                 var signInResult = await _signInManager.CheckPasswordSignInAsync(user, loginDTO.Password!, lockoutOnFailure: true);
 
                 if (!signInResult.Succeeded)
                 {
-                    return Unauthorized(new ApiResponse { Message = "فشل في تسجيل الدخول" });
+                    return Unauthorized(new ApiResponse { Message = "البريد الإلكتروني او كلمة المرور غير صحيحة" });
                 }
 
 
@@ -98,7 +98,8 @@ namespace firstProject.Controllers
                     Secure = true,
                     SameSite = SameSiteMode.None,
                     Expires = DateTime.UtcNow.AddMinutes(30),
-                    Domain = ".takhleesak.com",
+                    //Domain = ".takhleesak.com",
+                    Domain = ".runasp.net",
                 });
 
                 return Ok(new ApiResponse

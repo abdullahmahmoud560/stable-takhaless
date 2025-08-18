@@ -18,7 +18,7 @@ namespace User.Controllers
             _db = db;
         }
 
-        [Authorize(Roles ="User")]
+        [Authorize]
         [HttpPost("Add-Saber-Certificates")]
         public async Task<IActionResult> AddSaberCertificate(SaberCertificationDTO saber)
         {
@@ -38,7 +38,7 @@ namespace User.Controllers
             return Ok(new { message = "تم اضافة شهادة سابر بنجاح" });
         }
 
-        [Authorize(Roles ="Saber, Admin")]
+        [Authorize]
         [HttpGet("Get-Saber-Certificates/{pageNumber}")]
         public async Task<IActionResult> GetSaberCertificates(int pageNumber)
         {
