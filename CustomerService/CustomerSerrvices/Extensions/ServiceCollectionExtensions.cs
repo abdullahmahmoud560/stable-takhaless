@@ -71,7 +71,7 @@ namespace CustomerSerrvices.Extensions
             {
                 options.AddPolicy("MyCors", policy =>
                 {
-                    policy.WithOrigins("https://test.takhleesak.com", "http://localhost:3000")
+                    policy.WithOrigins("https://test.takhleesak.com", "http://localhost:3000", "https://f67h0v6n-3000.euw.devtunnels.ms")
                     .AllowCredentials()
                     .AllowAnyHeader()
                     .AllowAnyMethod();

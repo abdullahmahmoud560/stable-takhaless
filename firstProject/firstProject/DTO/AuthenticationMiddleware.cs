@@ -22,9 +22,6 @@ public class AuthenticationMiddleware
         using (var scope = _scopeFactory.CreateScope())
         {
             var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
-
-            try
-            {
                 var ID = context.User.FindFirstValue("ID");
                 var user = await userManager.FindByIdAsync(ID!);
                 
@@ -34,7 +31,7 @@ public class AuthenticationMiddleware
                     context.Response.Cookies.Append("token", "", new CookieOptions
                     {
                         Expires = DateTimeOffset.UtcNow.AddDays(-1),
-                        Domain = ".runasp.net",
+                        Domain = ".takhleesak.com",
                         Secure = true,
                         HttpOnly = true,
                         SameSite = SameSiteMode.None
@@ -51,19 +48,7 @@ public class AuthenticationMiddleware
                 }
 
                 await _next(context);
-            }
-            catch (Exception ex)
-            {
-                context.Response.Cookies.Delete("token");
-
-                _logger.LogError(ex, "حدث خطأ أثناء عملية المصادقة");
-                context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
-                var response = new ApiResponse
-                {
-                    Message = "حدث خطأ أثناء عملية المصادقة. يرجى المحاولة لاحقًا"+ex.Message,
-                };
-                await context.Response.WriteAsJsonAsync(response);
-            }
+           
         }
     }
 

@@ -15,14 +15,22 @@ var app = builder.Build();
 
 app.UseSwagger();
 app.UseSwaggerUI();
-app.UseGlobalExceptionHandler();
+
 app.UseHttpsRedirection();
+
+app.UseStaticFiles();
+
 app.UseRouting();
+
 app.UseCors("MyCors");
+
 app.UseAuthentication();
 app.UseAuthorization();
-app.MapHub<ChatHub>("/chatHub");
+
+app.UseGlobalExceptionHandler(); // يفضل يكون بعد كل الـ Auth عشان يلتقط أي استثناء
+
 app.MapControllers();
+app.MapHub<ChatHub>("/chatHub");
 app.MapHealthChecks("/health");
 
 app.Run();

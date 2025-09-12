@@ -5,7 +5,6 @@ using System.Globalization;
 using System.Text.Json;
 using User.ApplicationDbContext;
 using User.DTO;
-using User.Model;
 
 namespace User.Controllers
 {

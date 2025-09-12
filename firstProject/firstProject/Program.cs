@@ -76,14 +76,6 @@ builder.Services.AddAuthentication(options =>
     {
         OnMessageReceived = context =>
         {
-            // 1️⃣ جرب تاخد من Authorization header
-            //var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
-            //if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer "))
-            //{
-            //    context.Token = authHeader.Substring("Bearer ".Length).Trim();
-            //    return Task.CompletedTask;
-            //}
-
             //Cookies
             var token = context.Request.Cookies["token"];
             if (!string.IsNullOrEmpty(token))
@@ -137,7 +129,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy(name: MyCors,
         policy =>
         {
-            policy.WithOrigins("https://test.takhleesak.com","http://localhost:3000")
+            policy.WithOrigins("https://test.takhleesak.com","http://localhost:3000", "https://f67h0v6n-3000.euw.devtunnels.ms")
                   .AllowCredentials() 
                   .AllowAnyHeader()
                   .AllowAnyMethod();

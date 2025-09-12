@@ -1,11 +1,11 @@
-﻿using System.Security.Claims;
-using firstProject.ApplicationDbContext;
+﻿using firstProject.ApplicationDbContext;
 using firstProject.DTO;
 using firstProject.Model;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace firstProject.Controllers
 {
@@ -51,8 +51,8 @@ namespace firstProject.Controllers
                     Response.Cookies.Append("token", "", new CookieOptions
                     {
                         Expires = DateTimeOffset.UtcNow.AddDays(-1),
-                        //Domain = ".runasp.net",
-                        Domain = ".takhleesak.com",
+                        Domain = ".runasp.net",
+                        //Domain = ".takhleesak.com",
                         Secure = true,
                         HttpOnly = true,
                         SameSite = SameSiteMode.None
@@ -63,8 +63,8 @@ namespace firstProject.Controllers
                         Secure = true,
                         SameSite = SameSiteMode.None,
                         Expires = DateTime.UtcNow.AddDays(7),
-                        Domain = ".takhleesak.com",
-                        //Domain = ".runasp.net",
+                        //Domain = ".takhleesak.com",
+                        Domain = ".runasp.net",
                     });
 
                     return Ok(new ApiResponse { Message = "تم تأكيد البريد الإلكتروني بنجاح" ,Data =rolesString });
@@ -73,8 +73,8 @@ namespace firstProject.Controllers
                 Response.Cookies.Append("token", "", new CookieOptions
                 {
                     Expires = DateTimeOffset.UtcNow.AddDays(-1),
-                    //Domain = ".runasp.net",
-                    Domain = ".takhleesak.com",
+                    Domain = ".runasp.net",
+                    //Domain = ".takhleesak.com",
                     Secure = true,
                     HttpOnly = true,
                     SameSite = SameSiteMode.None
@@ -86,10 +86,38 @@ namespace firstProject.Controllers
                     Secure = true,
                     SameSite = SameSiteMode.None,
                     Expires = DateTime.UtcNow.AddDays(7),
-                    Domain = ".takhleesak.com",
-                    //Domain = ".runasp.net",
+                    //Domain = ".takhleesak.com",
+                    Domain = ".runasp.net",
                 });
                 return Ok(new ApiResponse { Message = "تم تأكيد الكود بنجاح", Data = rolesString });
+            }
+
+            return BadRequest(new ApiResponse { Message = "فشل" , Data =isCodeValid});
+        }
+        [Authorize]
+        [HttpPost("VerifyCode-Mobile")]
+        public async Task<IActionResult> VerifyCodeMobile(VerifyCode verifyCode)
+        {
+            var ID = User.FindFirstValue("ID");
+            var user = await _userManager.FindByIdAsync(ID!);
+            var time = await _context.twoFactorVerify.Where(l => l.UserId == user!.Id && l.Name == verifyCode.typeOfGenerate).Select(g => new { g.Date, g.Value }).FirstOrDefaultAsync();
+            bool isCodeValid = BCrypt.Net.BCrypt.Verify(verifyCode.Code, time!.Value);
+            bool isCodeExpired = (DateTime.UtcNow - time.Date!.Date) > TimeSpan.FromMinutes(2);
+
+            if (isCodeValid && isCodeExpired && user!.isBlocked == false)
+            {
+                var tokenService = new Token(_userManager);
+                var Role = await _userManager.GetRolesAsync(user);
+                var rolesString = string.Join(", ", Role);
+                if (verifyCode.typeOfGenerate == "VerifyUserEmail" || verifyCode.typeOfGenerate == "VerifyCompanyEmail" || verifyCode.typeOfGenerate == "VerifyBrokerEmail")
+                {
+                    user.isActive = true;
+                    await _userManager.UpdateAsync(user);
+                    var token = await tokenService.GenerateToken(user);
+                    return Ok(new ApiResponse { Message = "تم تأكيد البريد الإلكتروني بنجاح" ,Data =token ,State=rolesString});
+                }
+                var generatedToken = await tokenService.GenerateToken(user);
+                return Ok(new ApiResponse { Message = "تم تأكيد البريد الإلكتروني بنجاح", Data = generatedToken, State = rolesString });
             }
 
             return BadRequest(new ApiResponse { Message = "فشل" , Data =isCodeValid});

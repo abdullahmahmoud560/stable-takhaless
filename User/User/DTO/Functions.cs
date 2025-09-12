@@ -17,10 +17,21 @@ namespace User.DTO
         }
 
         // 🧩 دالة مساعدة لاستخراج التوكن من الكوكيز
-        private string? GetTokenFromCookies()
+        private string? GetToken()
         {
-            return _httpContextAccessor.HttpContext?.Request.Cookies["token"];
+            var httpContext = _httpContextAccessor.HttpContext;
+
+            // 1️⃣ جرّب الهيدر الأول
+            var authHeader = httpContext?.Request.Headers["Authorization"].FirstOrDefault();
+            if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer "))
+            {
+                return authHeader.Substring("Bearer ".Length).Trim();
+            }
+
+            // 2️⃣ لو مفيش → fallback للكوكيز
+            return httpContext?.Request.Cookies["token"];
         }
+
 
         // 🧩 دالة موحدة لإرسال POST
         private async Task<JsonElement?> SendPostRequestAsync(string url, object data, string? token, bool useCookieHeader = false)
@@ -97,7 +108,7 @@ namespace User.DTO
         // 📌 SendAPI
         public async Task<JsonElement?> SendAPI(string ID)
         {
-            string? token = GetTokenFromCookies();
+            string? token = GetToken();
             var requestData = new { ID = ID };
             return await SendPostRequestAsync("http://firstproject-service:9100/api/Select-Data", requestData, token);
         }
@@ -105,7 +116,7 @@ namespace User.DTO
         // 📌 BrokerandUser
         public async Task<JsonElement?> BrokerandUser(string ID, string BrokerID)
         {
-            string? token = GetTokenFromCookies();
+            string? token = GetToken();
             if (string.IsNullOrEmpty(token))
             {
                 return JsonDocument.Parse("{\"success\": false, \"message\": \"Missing Authorization Token\"}").RootElement;
@@ -147,21 +158,21 @@ namespace User.DTO
         // 📌 Admin
         public async Task<JsonElement?> Admin()
         {
-            string? token = GetTokenFromCookies();
+            string? token = GetToken();
             return await SendGetRequestAsync("http://firstproject-service:9100/api/Statictis", token, useCookieHeader: true);
         }
 
         // 📌 GetAllBroker
         public async Task<JsonElement?> GetAllBroker(int Page)
         {
-            string? token = GetTokenFromCookies();
+            string? token = GetToken();
             return await SendGetRequestAsync($"http://firstproject-service:9100/api/Get-Broker/{Page}", token);
         }
 
         // 📌 Logs
         public async Task<JsonElement?> Logs(LogsDTO logsDTO)
         {
-            string? token = GetTokenFromCookies();
+            string? token = GetToken();
 
             var requestData = new
             {
