@@ -36,7 +36,9 @@ namespace firstProject.Exceptions
                     : new ErrorDetails
                     {
                         Status = 500,
-                        Message = "حدث خطأ غير متوقع، يرجى المحاولة لاحقًا."
+                        //Message = "حدث خطأ غير متوقع، يرجى المحاولة لاحقًا.",
+                        Message = ex.Message,
+                        Details = ex.StackTrace
                     };
 
                 var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
