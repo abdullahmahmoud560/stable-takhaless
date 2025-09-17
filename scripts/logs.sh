@@ -4,31 +4,39 @@
 echo "📋 Takhlees Tech Backend - Log Viewer"
 echo ""
 
-if [ $# -eq 0 ]; then
-    echo "Usage: ./scripts/logs.sh [service-name]"
-    echo ""
-    echo "Available services:"
-    echo "  - admin-service"
-    echo "  - customerservice-service"
-    echo "  - firstproject-service"
-    echo "  - user-service"
-    echo "  - admin-db"
-    echo "  - customerservice-db"
-    echo "  - firstproject-db"
-    echo "  - user-db"
-    echo "  - hangfire-db"
-    echo "  - phpmyadmin"
-    echo "  - nginx"
-    echo ""
-    echo "Examples:"
-    echo "  ./scripts/logs.sh firstproject-service    # View FirstProject logs"
-    echo "  ./scripts/logs.sh admin-db                # View Admin database logs"
-    echo "  ./scripts/logs.sh                         # View all logs"
-    
-    echo ""
-    echo "📊 Showing logs from all services..."
-    docker-compose logs -f
+# Choose env file
+ENV_FILE="${ENV_FILE:-.env}"
+if [[ "$1" == "--prod" || "$1" == "-p" ]]; then
+	ENV_FILE=".env.prod"
+	shift
+fi
+
+SERVICE="$1"
+
+if [ -z "$SERVICE" ]; then
+	echo "Usage: ./scripts/logs.sh [service-name] [--prod]"
+	echo ""
+	echo "Available services:"
+	echo "  - admin-service"
+	echo "  - customerservice-service"
+	echo "  - firstproject-service"
+	echo "  - user-service"
+	echo "  - admin-db"
+	echo "  - customerservice-db"
+	echo "  - firstproject-db"
+	echo "  - user-db"
+	echo "  - hangfire-db"
+	echo "  - phpmyadmin"
+	echo "  - nginx"
+	echo ""
+	echo "Examples:"
+	echo "  ENV_FILE=.env.prod ./scripts/logs.sh firstproject-service    # View FirstProject logs (prod env)"
+	echo "  ./scripts/logs.sh firstproject-service --prod               # Same as above"
+	
+	echo ""
+	echo "📊 Showing logs from all services (env: $ENV_FILE)..."
+	docker-compose --env-file "$ENV_FILE" logs -f
 else
-    echo "📊 Showing logs from: $1"
-    docker-compose logs -f $1
+	echo "📊 Showing logs from: $SERVICE (env: $ENV_FILE)"
+	docker-compose --env-file "$ENV_FILE" logs -f "$SERVICE"
 fi 

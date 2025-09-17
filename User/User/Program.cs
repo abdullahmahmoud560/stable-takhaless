@@ -27,9 +27,15 @@ builder.Services.AddSingleton(new PayPalService(
 ));
 
 // إضافة MySQL
+var dbConnectionString = builder.Configuration.GetConnectionString("Connection") 
+    ?? Environment.GetEnvironmentVariable("ConnectionStrings__Connection")
+    ?? "Server=user-db;Database=u676203545_Orders;User=user_user;Password=user_pass;";
+
+Console.WriteLine($"Database Connection String: {dbConnectionString}");
+
 builder.Services.AddDbContext<DB>(options =>
 {
-    options.UseMySQL(Environment.GetEnvironmentVariable("ConnectionStrings__Connection")!);
+    options.UseMySQL(dbConnectionString);
 });
 
 // ✅ إضافة JWT Authentication
@@ -93,9 +99,16 @@ builder.Services.AddCors(options =>
 builder.Services.AddScoped<HangFire>();
 builder.Services.AddScoped<EmailService>();
 
+// Get connection string with fallback
+var hangfireConnectionString = builder.Configuration.GetConnectionString("HangeFire") 
+    ?? Environment.GetEnvironmentVariable("ConnectionStrings__HangeFire")
+    ?? "Server=hangfire-db;Database=u676203545_HangFire;User=hangfire_user;Password=hangfire_pass;";
+
+Console.WriteLine($"Hangfire Connection String: {hangfireConnectionString}");
+
 builder.Services.AddHangfire(config =>
     config.UseStorage(new MySqlStorage(
-       Environment.GetEnvironmentVariable("ConnectionStrings__HangeFire")!,
+       hangfireConnectionString,
         new MySqlStorageOptions
         {
             QueuePollInterval = TimeSpan.FromMinutes(15),
