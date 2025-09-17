@@ -102,8 +102,7 @@ namespace firstProject.Controllers
                     Secure = true,
                     SameSite = SameSiteMode.None,
                     Expires = DateTime.UtcNow.AddMinutes(30),
-                    //Domain = ".takhleesak.com",
-                    Domain = ".runasp.net",
+                    Domain = ".takhleesak.com",
                 });
 
                 return Ok(new ApiResponse
