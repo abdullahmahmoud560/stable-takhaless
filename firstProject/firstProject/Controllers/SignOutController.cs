@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using Infrastructure.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace firstProject.Controllers
@@ -11,14 +12,7 @@ namespace firstProject.Controllers
         [HttpGet("Logout")]
         public IActionResult Logout()
         {
-            Response.Cookies.Append("token", "", new CookieOptions
-            {
-                Expires = DateTimeOffset.UtcNow.AddDays(-1),
-                Domain = ".takhleesak.com",
-                Secure = true,
-                HttpOnly = true,
-                SameSite = SameSiteMode.None
-            });
+            CookieHelper.RemoveTokenCookie(Response);
             return Ok("تم تسجيل الخروج بنجاح");
         }
 

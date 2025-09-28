@@ -1,9 +1,9 @@
-﻿using firstProject.ApplicationDbContext;
-using firstProject.DTO;
-using firstProject.Model;
-using Microsoft.AspNetCore.Identity;
+﻿using Application.Interface;
+using AutoMapper;
+using Infrastructure.Services;
+using Infrastructure.Validation;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+using static Shared.DataTransferObject;
 
 namespace firstProject.Controllers
 {
@@ -12,54 +12,50 @@ namespace firstProject.Controllers
 
     public class SignupController : ControllerBase
     {
-        private readonly UserManager<User> _userManager;
-        private readonly EmailService _emailService;
-        private readonly DB _db;
-        private readonly HttpClient _httpClient;
-        private readonly IHttpContextAccessor _httpContextAccessor;
-        private readonly Token_verfy _tokenVerifyService;
+        private readonly IServiceManager _serviceManager;
+        private readonly IUserService _userService;
+        private readonly IMapper _mapper;
 
-        public SignupController(UserManager<User> userManager, EmailService emailService, DB db, IHttpContextAccessor httpContext, HttpClient httpClient, Token_verfy tokenVerifyService)
+        public SignupController(IServiceManager serviceManager,IUserService userService,IMapper mapper)
         {
-            _userManager = userManager;
-            _emailService = emailService;
-            _db = db;
-            _httpContextAccessor = httpContext;
-            _httpClient = httpClient;
-            _tokenVerifyService = tokenVerifyService;
+            _serviceManager = serviceManager;
+            _userService = userService;
+            _mapper = mapper;
         }
 
-        //انشاء حساب للأفراد
         [HttpPost("Register-user")]
         public async Task<IActionResult> Register_user([FromBody] UserDTO registerDTO)
         {
-            var existingUser = await _userManager.Users
-                .AnyAsync(u => u.Email == registerDTO.Email || u.PhoneNumber == registerDTO.phoneNumber);
-
-            if (existingUser)
+            if (string.IsNullOrWhiteSpace(registerDTO.Email) || string.IsNullOrEmpty(registerDTO.PhoneNumber)
+                || string.IsNullOrEmpty(registerDTO.fullName) || string.IsNullOrEmpty(registerDTO.Identity)
+                || string.IsNullOrEmpty(registerDTO.Password) || string.IsNullOrEmpty(registerDTO.Confirm))
             {
-                return BadRequest(new ApiResponse { Message = "الرقم او البريد مستخدم بالفعل" });
+                return BadRequest(new ApiResponse { Message = "برجاء ملئ جميع الحقول" });
             }
+            registerDTO.Email = InputSanitizer.SanitizeEmail(registerDTO.Email);
+            registerDTO.fullName = InputSanitizer.SanitizeName(registerDTO.fullName);
+            registerDTO.PhoneNumber = InputSanitizer.SanitizePhoneNumber(registerDTO.PhoneNumber);
+            registerDTO.Identity = InputSanitizer.SanitizeIdentity(registerDTO.Identity);
 
-            var user = new User
+            var isFound = await _userService.CheckIsFoundEmailOrPhoneOrIdentity(registerDTO.Email,registerDTO.PhoneNumber,registerDTO.Identity);
+
+            if (!isFound.Success)
             {
-                fullName = registerDTO.fullName,
-                Email = registerDTO.Email,
-                PhoneNumber = registerDTO.phoneNumber,
-                UserName = Guid.NewGuid().ToString(),
-                Identity = registerDTO.Identity
-            };
-
+                return BadRequest(new ApiResponse { Message = isFound.Error });
+            }
             if (registerDTO.Password != registerDTO.Confirm)
             {
                 return BadRequest(new ApiResponse { Message = "كلمة المرور وتأكيد كلمة المرور غير متطابقتين" });
             }
+            registerDTO.Role = "User";
+            var user = _mapper.Map<BrokerDTO>(registerDTO);
 
-            var result = await _userManager.CreateAsync(user, registerDTO.Password!);
-            if (result.Succeeded)
+            var result = await _userService.CreateAsync(user, registerDTO.Password!);
+            if (result.Success)
             {
-                await _userManager.AddToRoleAsync(user, "User");
-                var verifyCode = await new Functions(_userManager, _db, _httpContextAccessor, _httpClient).GenerateVerifyCode(user, "VerifyUserEmail")!;
+                var verifyCode = await _serviceManager.FunctionService.GenerateVerifyCode(registerDTO.Email, "VerifyUserEmail")!;
+                if (!verifyCode.All(c => char.IsDigit(c)))
+                    return BadRequest(new ApiResponse{ Message = verifyCode });
                 var Body = string.Format(@"
 <!DOCTYPE html>
 <html lang=""ar"">
@@ -81,63 +77,64 @@ namespace firstProject.Controllers
     </div>
 </body>
 </html>", verifyCode);
-                var send = await _emailService.SendEmailAsync(user.Email!, "تأكيد بريدك الإلكتروني", Body);
-                var generatedToken = await _tokenVerifyService.GenerateToken(user);
+                var send = await _serviceManager.EmailService.SendEmailAsync(user.Email!, "تأكيد بريدك الإلكتروني", Body);
+                if (!send.Success)
+                    return BadRequest(new ApiResponse { Message = send.Error });
+                var generatedToken = await _serviceManager.TokenService.GenerateActiveToken(registerDTO.Email);
+                if (!generatedToken.Success)
+                    return BadRequest(new ApiResponse { Message = generatedToken.Error});
 
-                Response.Cookies.Append("token", generatedToken, new CookieOptions
-                {
-                    HttpOnly = true,
-                    Secure = true,
-                    SameSite = SameSiteMode.None,
-                    Expires = DateTime.UtcNow.AddMinutes(30),
-                    Domain = ".takhleesak.com",
-                    Path = "/"
-                });
-
+                CookieHelper.SetTokenCookieInDays(Response, generatedToken.Error, 14);
                 return Ok(new ApiResponse { Message = "تم تسجيل حساب الافراد بنجاح", Data = "VerifyUserEmail" });
             }
 
-            return BadRequest(new ApiResponse { Message = "فشل في التسجيل" });
+            return BadRequest(new ApiResponse { Message = result.Error });
         }
 
-        //انشاء حساب للأعمال
         [HttpPost("Register-company")]
         public async Task<IActionResult> Register_company([FromBody] CompanyDTO companyDTO)
         {
-            var existingUser = await _userManager.Users
-                .AnyAsync(u => u.Email == companyDTO.Email! || u.PhoneNumber == companyDTO.phoneNumber);
-
-            if (existingUser)
+            if (string.IsNullOrEmpty(companyDTO.Email) || string.IsNullOrEmpty(companyDTO.PhoneNumber)
+            || string.IsNullOrEmpty(companyDTO.fullName) || string.IsNullOrEmpty(companyDTO.Identity)
+            || string.IsNullOrEmpty(companyDTO.Password) || string.IsNullOrEmpty(companyDTO.Confirm)
+            || string.IsNullOrEmpty(companyDTO.InsuranceNumber) || string.IsNullOrEmpty(companyDTO.taxRecord))
             {
-                return BadRequest(new ApiResponse { Message = "الرقم او البريد مستخدم بالفعل" });
+                return BadRequest(new ApiResponse { Message = "برجاءملئ جميع الحقول" });
+            }
+            
+            // Input Sanitization للحقول الحساسة
+            companyDTO.Email = InputSanitizer.SanitizeEmail(companyDTO.Email);
+            companyDTO.fullName = InputSanitizer.SanitizeName(companyDTO.fullName);
+            companyDTO.PhoneNumber = InputSanitizer.SanitizePhoneNumber(companyDTO.PhoneNumber);
+            companyDTO.Identity = InputSanitizer.SanitizeIdentity(companyDTO.Identity);
+            companyDTO.taxRecord = InputSanitizer.SanitizeString(companyDTO.taxRecord);
+            companyDTO.InsuranceNumber = InputSanitizer.SanitizeString(companyDTO.InsuranceNumber);
+            var isFound = await _userService.CheckIsFoundEmailOrPhoneOrIdentity(companyDTO.Email, companyDTO.PhoneNumber,companyDTO.Identity);
+
+            if (!isFound.Success)
+            {
+                return BadRequest(new ApiResponse { Message = isFound.Error });
+            }
+
+            var isFound2 = await _userService.CheckIsFoundtaxRecordOrInsuranceNumber(companyDTO.InsuranceNumber, companyDTO.taxRecord,string.Empty);
+
+            if (!isFound2.Success)
+            {
+                return BadRequest(new ApiResponse { Message = isFound2.Error });
             }
 
             if (companyDTO.Password != companyDTO.Confirm)
             {
                 return BadRequest(new ApiResponse { Message = "كلمة المرور وتأكيد كلمة المرور غير متطابقتين" });
             }
-
-            if (string.IsNullOrEmpty(companyDTO.taxRecord) || string.IsNullOrEmpty(companyDTO.InsuranceNumber))
+            companyDTO.Role = "Company";
+            var company = _mapper.Map<BrokerDTO>(companyDTO);
+            var result = await _userService.CreateAsync(company, companyDTO.Password!);
+            if (result.Success)
             {
-                return BadRequest(new ApiResponse { Message = "يجب تعبئة جميع الحقول المطلوبة" });
-            }
-
-            var user = new User
-            {
-                fullName = companyDTO.fullName,
-                Email = companyDTO.Email,
-                PhoneNumber = companyDTO.phoneNumber,
-                UserName = Guid.NewGuid().ToString(),
-                Identity = companyDTO.Identity,
-                taxRecord = companyDTO.taxRecord,
-                InsuranceNumber = companyDTO.InsuranceNumber,
-            };
-
-            var result = await _userManager.CreateAsync(user, companyDTO.Password!);
-            if (result.Succeeded)
-            {
-                await _userManager.AddToRoleAsync(user, "Company");
-                var verifyCode = await new Functions(_userManager, _db, _httpContextAccessor, _httpClient).GenerateVerifyCode(user, "VerifyCompanyEmail")!;
+                var verifyCode = await _serviceManager.FunctionService.GenerateVerifyCode(companyDTO.Email, "VerifyCompanyEmail")!;
+                if (!verifyCode.All(c => char.IsDigit(c)))
+                    return BadRequest(new ApiResponse{ Message = verifyCode });
                 var Body = string.Format(@"
 <!DOCTYPE html>
 <html lang=""ar"">
@@ -166,19 +163,13 @@ namespace firstProject.Controllers
     </div>
 </body>
 </html>", verifyCode);
-                await _emailService.SendEmailAsync(user.Email!, "تأكيد بريدك الإلكتروني", Body);
-                var generatedToken = await _tokenVerifyService.GenerateToken(user);
-
-                Response.Cookies.Append("token", generatedToken, new CookieOptions
-                {
-                    HttpOnly = true,
-                    Secure = true,
-                    SameSite = SameSiteMode.None,
-                    Expires = DateTime.UtcNow.AddMinutes(30),
-                    Domain = ".takhleesak.com",
-                    Path = "/"
-                });
-
+                var send = await _serviceManager.EmailService.SendEmailAsync(companyDTO.Email!, "تأكيد بريدك الإلكتروني", Body);
+                if (!send.Success)
+                    return BadRequest(new ApiResponse { Message = send.Error });
+                var generatedToken = await _serviceManager.TokenService.GenerateActiveToken(companyDTO.Email);
+                if (!generatedToken.Success)
+                    return BadRequest(new ApiResponse { Message = generatedToken.Error });
+                CookieHelper.SetTokenCookieInDays(Response, generatedToken.Error, 14);
 
                 return Ok(new ApiResponse { Message = "تم تسجيل حساب الأعمال بنجاح", Data = "VerifyCompanyEmail" });
             }
@@ -186,17 +177,39 @@ namespace firstProject.Controllers
             return BadRequest(new ApiResponse { Message = "فشل في التسجيل" });
         }
 
-        //انشاء حساب للمخلصين
         [HttpPost("Register-Broker")]
         public async Task<IActionResult> RegisterBroker([FromBody] BrokerDTO brokerDTO)
         {
-
-            var existingUser = await _userManager.Users
-                .AnyAsync(u => u.Email == brokerDTO.Email || u.PhoneNumber == brokerDTO.phoneNumber);
-
-            if (existingUser)
+            if (string.IsNullOrEmpty(brokerDTO.Email) || string.IsNullOrEmpty(brokerDTO.PhoneNumber)
+            || string.IsNullOrEmpty(brokerDTO.fullName) || string.IsNullOrEmpty(brokerDTO.Identity)
+            || string.IsNullOrEmpty(brokerDTO.Password) || string.IsNullOrEmpty(brokerDTO.Confirm)
+            || string.IsNullOrEmpty(brokerDTO.InsuranceNumber) || string.IsNullOrEmpty(brokerDTO.taxRecord)
+            || string.IsNullOrEmpty(brokerDTO.license))
             {
-                return BadRequest(new ApiResponse { Message = "الرقم او البريد مستخدم بالفعل" });
+                return BadRequest(new ApiResponse { Message = "برجاءملئ جميع الحقول" });
+            }
+            
+            // Input Sanitization للحقول الحساسة
+            brokerDTO.Email = InputSanitizer.SanitizeEmail(brokerDTO.Email);
+            brokerDTO.fullName = InputSanitizer.SanitizeName(brokerDTO.fullName);
+            brokerDTO.PhoneNumber = InputSanitizer.SanitizePhoneNumber(brokerDTO.PhoneNumber);
+            brokerDTO.Identity = InputSanitizer.SanitizeIdentity(brokerDTO.Identity);
+            brokerDTO.taxRecord = InputSanitizer.SanitizeString(brokerDTO.taxRecord);
+            brokerDTO.InsuranceNumber = InputSanitizer.SanitizeString(brokerDTO.InsuranceNumber);
+            brokerDTO.license = InputSanitizer.SanitizeString(brokerDTO.license);
+
+            var isFound = await _userService.CheckIsFoundEmailOrPhoneOrIdentity(brokerDTO.Email, brokerDTO.PhoneNumber,brokerDTO.Identity);
+
+            if (!isFound.Success)
+            {
+                return BadRequest(new ApiResponse { Message = isFound.Error });
+            }
+
+            var isFound2 = await _userService.CheckIsFoundtaxRecordOrInsuranceNumber(brokerDTO.Email, brokerDTO.PhoneNumber,brokerDTO.license);
+
+            if (!isFound2.Success)
+            {
+                return BadRequest(new ApiResponse { Message = isFound2.Error });
             }
 
             if (brokerDTO.Password != brokerDTO.Confirm)
@@ -204,28 +217,13 @@ namespace firstProject.Controllers
                 return BadRequest(new ApiResponse { Message = "كلمة المرور وتأكيد كلمة المرور غير متطابقتين" });
             }
 
-            if (string.IsNullOrEmpty(brokerDTO.taxRecord) || string.IsNullOrEmpty(brokerDTO.InsuranceNumber))
+            brokerDTO.Role = "Broker";
+            var result = await _userService.CreateAsync(brokerDTO, brokerDTO.Password!);
+            if (result.Success)
             {
-                return BadRequest(new ApiResponse { Message = "يجب تعبئة جميع الحقول المطلوبة" });
-            }
-
-            var user = new User
-            {
-                fullName = brokerDTO.fullName,
-                Email = brokerDTO.Email,
-                PhoneNumber = brokerDTO.phoneNumber,
-                UserName = Guid.NewGuid().ToString(),
-                Identity = brokerDTO.Identity,
-                taxRecord = brokerDTO.taxRecord,
-                InsuranceNumber = brokerDTO.InsuranceNumber,
-                license = brokerDTO.license,
-            };
-
-            var result = await _userManager.CreateAsync(user, brokerDTO.Password!);
-            if (result.Succeeded)
-            {
-                await _userManager.AddToRoleAsync(user, "Broker");
-                var verifyCode = await new Functions(_userManager, _db, _httpContextAccessor, _httpClient).GenerateVerifyCode(user, "VerifyBrokerEmail")!;
+                var verifyCode = await _serviceManager.FunctionService.GenerateVerifyCode(brokerDTO.Email, "VerifyBrokerEmail")!;
+                if (!verifyCode.All(c => char.IsDigit(c)))
+                    return BadRequest(new { Message = verifyCode });
                 var Body = string.Format(@"
 <!DOCTYPE html>
 <html lang=""ar"">
@@ -254,21 +252,15 @@ namespace firstProject.Controllers
     </div>
 </body>
 </html>", verifyCode);
-                await _emailService.SendEmailAsync(user.Email!, "تأكيد بريدك الإلكتروني", Body);
-                var generatedToken = await _tokenVerifyService.GenerateToken(user);
-
-                Response.Cookies.Append("token", generatedToken, new CookieOptions
-                {
-                    HttpOnly = true,
-                    Secure = true,
-                    SameSite = SameSiteMode.None,
-                    Expires = DateTime.UtcNow.AddMinutes(30),
-                    Domain = ".takhleesak.com",
-                    Path = "/"
-                });
+                var send = await _serviceManager.EmailService.SendEmailAsync(brokerDTO.Email!, "تأكيد بريدك الإلكتروني", Body);
+                if (!send.Success)
+                    return BadRequest(new ApiResponse { Message = send.Error });
+                var generatedToken = await _serviceManager.TokenService.GenerateActiveToken(brokerDTO.Email);
+                if (!generatedToken.Success)
+                    return BadRequest(new ApiResponse { Message = generatedToken.Error});
+                CookieHelper.SetTokenCookieInDays(Response, generatedToken.Error, 14);
                 return Ok(new ApiResponse { Message = "تم تسجيل حساب المخلصين بنجاح", Data = "VerifyBrokerEmail" });
             }
-
             return BadRequest(new ApiResponse { Message = "فشل في التسجيل" });
         }
     }

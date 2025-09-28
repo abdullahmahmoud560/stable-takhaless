@@ -1,157 +1,56 @@
-﻿using AspNetCoreRateLimit;
-using DotNetEnv;
-using firstProject.ApplicationDbContext;
-using firstProject.DTO;
+﻿using firstProject.MappingProfiles;
+using AspNetCoreRateLimit;
 using firstProject.Exceptions;
-using firstProject.Model;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
+using Infrastructure.Extensions;
+using firstProject.ApplicationDbContext;
 
 var builder = WebApplication.CreateBuilder(args);
-Env.Load();
 
-builder.Services.AddControllers();
-
-// ✅ إضافة Rate Limiting
-builder.Services.Configure<IpRateLimitOptions>(builder.Configuration.GetSection("IpRateLimiting"));
-builder.Services.Configure<IpRateLimitPolicies>(builder.Configuration.GetSection("IpRateLimitPolicies"));
-builder.Services.AddSingleton<IRateLimitCounterStore, MemoryCacheRateLimitCounterStore>();  
-builder.Services.AddSingleton<IIpPolicyStore, MemoryCacheIpPolicyStore>();  
-builder.Services.AddSingleton<IRateLimitConfiguration, RateLimitConfiguration>();
-builder.Services.AddSingleton<IProcessingStrategy, AsyncKeyLockProcessingStrategy>();  
-
-
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-builder.Services.AddScoped<EmailService>();
-builder.Services.AddScoped<Token_verfy>(); // إضافة Token_verfy لحل مشكلة DI
-
-// ✅ إضافة MySQL
-builder.Services.AddDbContext<DB>(options =>
+builder.Services.ConfigureDotEnv();
+builder.Services.ConfigureSqlContext();
+builder.Services.ConfigureIdentity();
+builder.Services.ConfigureUserRepository();
+builder.Services.ConfigureUserService();
+builder.Services.ConfigureServiceManager();
+builder.Services.ConfigureJWT();
+builder.Services.ConfigureCORS();
+builder.Services.ConfigureDataProtection();
+builder.Services.AddMemoryCache(options =>
 {
-    options.UseMySQL(Environment.GetEnvironmentVariable("ConnectionStrings__Connection")!);
+    options.ExpirationScanFrequency = TimeSpan.FromMinutes(5);
+    options.TrackStatistics = true;
 });
-
-// ✅ إضافة Identity
-builder.Services.AddIdentity<User, IdentityRole>(options =>
-{
-    options.Lockout.MaxFailedAccessAttempts = 5;
-    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
-    options.Lockout.AllowedForNewUsers = true;
-    options.Tokens.ProviderMap.Add("Email", new TokenProviderDescriptor(typeof(EmailTokenProvider<User>)));
-    options.Password.RequiredLength = 8;
-})
-.AddEntityFrameworkStores<DB>()
-.AddDefaultTokenProviders();
-
-// ✅ إضافة JWT Authentication
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-{
-    options.RequireHttpsMetadata = false;
-
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-
-        ValidIssuer = Environment.GetEnvironmentVariable("JWT__Issuer"),
-        ValidAudience = Environment.GetEnvironmentVariable("JWT__Audience"),
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Environment.GetEnvironmentVariable("JWT__SecretKey")!)),
-        RoleClaimType = "Role",
-        ClockSkew = TimeSpan.Zero 
-    };
-
-    options.Events = new JwtBearerEvents
-    {
-        OnMessageReceived = context =>
-        {
-            //Cookies
-            var token = context.Request.Cookies["token"];
-            if (!string.IsNullOrEmpty(token))
-            {
-                context.Token = token;
-            }
-            return Task.CompletedTask;
-        }
-    };
-});
-
-
-// ✅ إضافة Health Checks
 builder.Services.AddHealthChecks();
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddHttpClient();
-// ✅ تخصيص الأخطاء في الـ API
-
-builder.Services.AddControllers().ConfigureApiBehaviorOptions(options =>
+builder.Services.AddHttpClient("DefaultClient", client =>
 {
-    options.InvalidModelStateResponseFactory = context =>
-    {
-        var errors = context.ModelState
-            .Where(m => m.Value!.Errors.Any())
-            .Select(m => new
-            {
-                Field = m.Key,
-                Errors = m.Value!.Errors.Select(e => e.ErrorMessage).ToList()
-            })
-            .ToList();
-
-        return new OkObjectResult(new ApiResponse
-        {
-            Message = "هناك بعض الأخطاء في البيانات المدخلة ",
-        });
-    };
+    client.Timeout = TimeSpan.FromSeconds(30);
+    client.DefaultRequestHeaders.Add("User-Agent", "Takhleesak-API/1.0");
 });
-builder.Services.AddDataProtection();
-
-// ✅ تخصيص وقت صلاحية التوكنات
-builder.Services.Configure<DataProtectionTokenProviderOptions>(options =>
-{
-    options.TokenLifespan = TimeSpan.FromMinutes(1);
-});
-
-// ✅ إعدادات CORS
-var MyCors = "MyCors";
-
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy(name: MyCors,
-        policy =>
-        {
-            policy.WithOrigins("https://test.takhleesak.com","http://localhost:3000", "https://f67h0v6n-3000.euw.devtunnels.ms")
-                  .AllowCredentials() 
-                  .AllowAnyHeader()
-                  .AllowAnyMethod();
-        });
-});
-
-builder.Services.AddMemoryCache();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+builder.Services.ConfigureRateLimiting(builder.Configuration);
+builder.Services.AddAutoMapper(typeof(UserProfile).Assembly);
+builder.Services.AddAuthorization();
+builder.Services.AddControllers();
 
 var app = builder.Build();
 
-app.MapHealthChecks("/health");
-
 app.UseGlobalExceptionHandler();
-
 app.UseIpRateLimiting();
 
-app.UseHttpsRedirection();
+app.Use(async (context, next) =>
+{
+    context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    context.Response.Headers["X-Frame-Options"] = "DENY";
+    context.Response.Headers["X-XSS-Protection"] = "1; mode=block";
+    context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+    context.Response.Headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()";
+    await next();
+});
 
 app.UseRouting();
-
 app.UseCors("MyCors");
-
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -171,8 +70,17 @@ var protectedRoutes = new[]
     "/api/Get-Account",
     "/api/Get-All-Peaple-Admin",
     "/api/Statictis",
-    "/api/Get-Information",
     "/api/Select-Data",
+};
+
+var sensitiveRoutes = new[]
+{
+    "/api/Login",
+    "/api/Login-Mobile",
+    "/api/Forget-Password",
+    "/api/Register-user",
+    "/api/Register-company",
+    "/api/Register-Broker"
 };
 
 app.UseWhen(
@@ -180,9 +88,14 @@ app.UseWhen(
     appBuilder => appBuilder.UseMiddleware<AuthenticationMiddleware>()
 );
 
+app.UseWhen(
+    context => sensitiveRoutes.Any(route => context.Request.Path.StartsWithSegments(route)),
+    appBuilder => appBuilder.UseIpRateLimiting()
+);
+
+app.MapHealthChecks("/health");
 app.UseSwagger();
 app.UseSwaggerUI();
-
 app.MapControllers();
 
 app.Run();

@@ -1,12 +1,10 @@
-﻿using firstProject.DTO;
-using firstProject.Model;
+﻿using Application.Interface;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using System.Globalization;
 using System.Security.Claims;
 using System.Text.Json;
+using static Shared.DataTransferObject;
 
 namespace firstProject.Controllers
 {
@@ -14,333 +12,108 @@ namespace firstProject.Controllers
     [ApiController]
     public class AdminController : ControllerBase
     {
-        private readonly UserManager<User> _userManager;
-        private readonly IHttpContextAccessor _httpContextAccessor;
-        private readonly HttpClient httpClient1;
+        private readonly IUserService _userService;
+        private readonly IServiceManager _serviceManager;
         private const int pageSize = 8;
-        public AdminController(UserManager<User> userManager, HttpClient httpClient, IHttpContextAccessor httpContextAccessor)
+        public AdminController(IUserService userservice, IServiceManager serviceManager)
         {
-            _userManager = userManager;
-            httpClient1 = httpClient;
-            _httpContextAccessor = httpContextAccessor;
+            _userService = userservice;
+            _serviceManager = serviceManager;
+
         }
 
-        //جلب جميع المستخدمين
         [Authorize(Roles = "Admin,Manager")]
         [HttpGet("Get-User/{Page}")]
         public async Task<IActionResult> GetAllUsers(int Page)
         {
-
-            var allUsers = await _userManager.Users
-                .Skip((Page - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-
-            var usersWithRoles = new List<UserDTO>();
-
-            foreach (var user in allUsers)
-            {
-                var roles = await _userManager.GetRolesAsync(user);
-                var role = string.Join(", ", roles);
-
-                if (role.Contains("User") || role.Contains("Company"))
-                {
-                    usersWithRoles.Add(new UserDTO
-                    {
-                        Id = user.Id,
-                        fullName = user.fullName,
-                        Identity = user.Identity,
-                        phoneNumber = user.PhoneNumber,
-                        Email = user.Email,
-                        Role = role,
-                        IsBlocked = user.isBlocked
-                    });
-                }
-            }
-
-            var totalUser = await _userManager.Users.CountAsync();
-            var totalPages = (int)Math.Ceiling((double)totalUser / pageSize);
-
-            return Ok(new
-            {
-                TotalPages = totalPages,
-                Page = Page,
-                data = usersWithRoles,
-                totalUser = usersWithRoles.Count
-            });
-            
+            var users = await _userService.GetByPaging(Page, pageSize, "User");
+            return CreatePaginatedResponse(users, Page, pageSize);
         }
 
-        //جلب جميع المخلصين
         [Authorize(Roles = "Admin,Manager")]
         [HttpGet("Get-Broker/{Page}")]
         public async Task<IActionResult> GetAllBroker(int Page)
         {
-            
-            var allUsers = await _userManager.Users
-                .Skip((Page - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-
-            var brokers = new List<UserDTO>();
-
-            foreach (var user in allUsers)
-            {
-                var roles = await _userManager.GetRolesAsync(user);
-                var role = string.Join(", ", roles);
-
-                if (role.Contains("Broker"))
-                {
-                    brokers.Add(new UserDTO
-                    {
-                        Id = user.Id,
-                        fullName = user.fullName,
-                        Identity = user.Identity,
-                        phoneNumber = user.PhoneNumber,
-                        Email = user.Email,
-                        Role = role,
-                        IsBlocked = user.isBlocked
-                    });
-                }
-            }
-
-            var totalUser = await _userManager.Users.CountAsync();
-            var totalPages = (int)Math.Ceiling((double)totalUser / pageSize);
-
-            return Ok(new
-            {
-                TotalPages = totalPages,
-                Page = Page,
-                totalUser = brokers.Count,
-                data = brokers
-            });
-          
+            var brokers = await _userService.GetByPaging(Page, pageSize, "Broker");
+            return CreatePaginatedResponse(brokers, Page, pageSize);
         }
 
-
-        //جلب جميع خدمة العملاء
         [Authorize(Roles = "Admin,Manager")]
         [HttpGet("Get-CustomerService/{Page}")]
         public async Task<IActionResult> GetAllCustomerService(int Page)
         {
-            
-            var allUsers = await _userManager.Users
-                .Skip((Page - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-
-            var customerServices = new List<UserDTO>();
-
-            foreach (var user in allUsers)
-            {
-                var roles = await _userManager.GetRolesAsync(user);
-                var role = string.Join(", ", roles);
-
-                if (role.Contains("CustomerService"))
-                {
-                    customerServices.Add(new UserDTO
-                    {
-                        Id = user.Id,
-                        fullName = user.fullName,
-                        Identity = user.Identity,
-                        phoneNumber = user.PhoneNumber,
-                        Email = user.Email,
-                        Role = role,
-                        IsBlocked = user.isBlocked
-                    });
-                }
-            }
-
-            var totalUser = await _userManager.Users.CountAsync();
-            var totalPages = (int)Math.Ceiling((double)totalUser / pageSize);
-
-            return Ok(new
-            {
-                TotalPages = totalPages,
-                Page = Page,
-                totalUser = customerServices.Count,
-                data = customerServices
-            });
-          
+            var customerService = await _userService.GetByPaging(Page, pageSize, "CustomerService");
+            return CreatePaginatedResponse(customerService, Page, pageSize);
         }
 
-        //جلب جميع المحاسبين
         [Authorize(Roles = "Admin,Manager")]
         [HttpGet("Get-Account/{Page}")]
         public async Task<IActionResult> GetAllAccount(int Page)
         {
-            
-            var allUsers = await _userManager.Users
-                .Skip((Page - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-
-            var accounts = new List<UserDTO>();
-
-            foreach (var user in allUsers)
-            {
-                var roles = await _userManager.GetRolesAsync(user);
-                var role = string.Join(", ", roles);
-
-                if (role.Contains("Account"))
-                {
-                    accounts.Add(new UserDTO
-                    {
-                        Id = user.Id,
-                        fullName = user.fullName,
-                        Identity = user.Identity,
-                        phoneNumber = user.PhoneNumber,
-                        Email = user.Email,
-                        Role = role,
-                        IsBlocked = user.isBlocked
-                    });
-                }
-            }
-
-            var totalUser = await _userManager.Users.CountAsync();
-            var totalPages = (int)Math.Ceiling((double)totalUser / pageSize);
-
-            return Ok(new
-            {
-                TotalPages = totalPages,
-                Page = Page,
-                totalUser = accounts.Count,
-                data = accounts
-            });
-          
+            var accounts = await _userService.GetByPaging(Page, pageSize, "Account");
+            return CreatePaginatedResponse(accounts, Page, pageSize);
         }
 
-        //جلب جميع المديرين
         [Authorize(Roles = "Admin,Manager")]
         [HttpGet("Get-Manager/{Page}")]
         public async Task<IActionResult> GetAllManager(int Page)
         {
-            
-            var allUsers = await _userManager.Users
-                .Skip((Page - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-
-            var managers = new List<UserDTO>();
-
-            foreach (var user in allUsers)
-            {
-                var roles = await _userManager.GetRolesAsync(user);
-                var role = string.Join(", ", roles);
-
-                if (role.Contains("Manager"))
-                {
-                    managers.Add(new UserDTO
-                    {
-                        Id = user.Id,
-                        fullName = user.fullName,
-                        Identity = user.Identity,
-                        phoneNumber = user.PhoneNumber,
-                        Email = user.Email,
-                        Role = role,
-                        IsBlocked = user.isBlocked
-                    });
-                }
-            }
-
-            var totalUser = await _userManager.Users.CountAsync();
-            var totalPages = (int)Math.Ceiling((double)totalUser / pageSize);
-
-            return Ok(new
-            {
-                TotalPages = totalPages,
-                Page = Page,
-                totalUser = managers.Count,
-                data = managers
-            });
-            
+            var managers = await _userService.GetByPaging(Page, pageSize, "Manager");
+            return CreatePaginatedResponse(managers, Page, pageSize);
         }
 
-        // عمل حظر
         [Authorize(Roles = ("Admin,Manager"))]
         [HttpPost("Blocked")]
         public async Task<IActionResult> BlockedUser(BlockedDTO blockedDTO)
         {
+            blockedDTO.Email = Infrastructure.Validation.InputSanitizer.SanitizeEmail(blockedDTO.Email);
             
-            if (blockedDTO.Email is not null)
-            {
-                var user = await _userManager.FindByEmailAsync(blockedDTO.Email);
-                var role = await _userManager.GetRolesAsync(user!);
-                var roles = string.Join(", ", role);
-                if (user is not null && user.isBlocked == false)
-                {
-                    if (roles != "Admin" && roles != null)
-                    {
-                        user.isBlocked = true;
-                        var result = await _userManager.UpdateAsync(user);
-                        if (result.Succeeded)
-                            return Ok(new ApiResponse { Message = "تم حظر المستخدم بنجاح" });
-                    }
-                    else
-                    {
-                        return Ok(new ApiResponse { Message = "لا يمكن حظر المسؤول" });
-                    }
-                }
-            }
-            return BadRequest();
-           
+            var result = await _userService.Blocked(blockedDTO.Email!);
+            if(!result.Success) 
+                return BadRequest(new ApiResponse { Message = result.Error});
+            return Ok(new ApiResponse { Message = "تم حظر المستخدم بنجاح"});
         }
 
-        // فك الحظر
         [Authorize(Roles = ("Admin,Manager"))]
         [HttpPost("Unblocked")]
         public async Task<IActionResult> UnblockedUser(BlockedDTO unBlockedDTO)
         {
-            if (unBlockedDTO.Email is not null)
+            if (!string.IsNullOrEmpty(unBlockedDTO.Email))
             {
-                var user = await _userManager.FindByEmailAsync(unBlockedDTO.Email);
-                var role = await _userManager.GetRolesAsync(user!);
-                var roles = string.Join(", ", role);
-                if (user is not null && user.isBlocked == true)
-                {
-                    user.isBlocked = false;
-                    var result = await _userManager.UpdateAsync(user);
-                    if (result.Succeeded)
-                        return Ok(new ApiResponse { Message = "تم فك حظر المستخدم بنجاح" });
-                }
+                var result = await _userService.UnBlocked(unBlockedDTO.Email);
+                if(!result.Success)
+                    return BadRequest(new ApiResponse {Message = result.Error});
+                return Ok(new ApiResponse { Message = "تم فك حظر المستخدم بنجاح"});
             }
             return BadRequest(new ApiResponse { Message = "خطأ في البيانات المدخلة" });
         }
 
-        //قائمة المحظورين
         [Authorize(Roles = "Admin,Manager")]
         [HttpGet("Black-List/{Page}")]
         public async Task<IActionResult> BlackList(int Page)
         {
-            var blackList = await _userManager.Users
-                .Where(u => u.isBlocked == true)
-                .Skip((Page - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
+            var blackList = await _userService.GetByPagingCondition(x=>x.isBlocked == true, Page,pageSize);
 
             var users = new List<UserDTO>();
 
-            foreach (var user in blackList)
+            foreach (var user in blackList!)
             {
-                var roles = await _userManager.GetRolesAsync(user);
+                var roles = await _userService.GetRole(user.Email!);
                 var role = string.Join(", ", roles);
 
-                users.Add(new UserDTO
+                users.Add(new UserListDTO
                 {
                     Id = user.Id,
-                    fullName = user.fullName,
-                    Identity = user.Identity,
-                    phoneNumber = user.PhoneNumber,
-                    Email = user.Email,
+                    fullName = user.fullName!,
+                    Identity = user.Identity!,
+                    PhoneNumber = user.PhoneNumber!,
+                    Email = user.Email!,
                     Role = role,
-                    IsBlocked = user.isBlocked
+                    IsBlocked = user.isBlocked,
                 });
             }
 
-            var totalCount = await _userManager.Users
-                .Where(u => u.isBlocked == true)
-                .CountAsync();
-
+            var totalCount = blackList.Count;
             var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
 
             return Ok(new
@@ -354,43 +127,28 @@ namespace firstProject.Controllers
         }
 
 
-        //تغيير صلاحية الطلب 
         [Authorize(Roles = ("Admin"))]
         [HttpPost("Change-Roles")]
-        public async Task<IActionResult> changeRoles(ChageRolesDTO roles)
+        public async Task<IActionResult> changeRoles(ChangeRolesDTO roles)
         {
-            
-            if (roles.ID == null || roles.roleName == null)
+            if (string.IsNullOrEmpty(roles.roleName)|| roles.ID == null)
             { return Ok(new ApiResponse { Message = "البيانات غير صحيحة" }); }
 
-            else
+            var result = await _userService.changeRoles(roles);
+            if (result.Success)
             {
-                var user = await _userManager.FindByIdAsync(roles.ID!);
-                if (user == null)
-                {
-                    return Ok(new ApiResponse { Message = "البريد الإلكترونى الذي أدخلته غير موجود" });
-                }
-                var oldRoles = await _userManager.GetRolesAsync(user);
-                var oldRole = string.Join(", ", oldRoles);
-                if (oldRole == null || oldRole == "Admin")
-                {
-                    return Ok(new ApiResponse { Message = "لا يمكن تغيير صلاحية المسؤول" });
-                }
-                await _userManager.RemoveFromRoleAsync(user, oldRole!);
-                await _userManager.AddToRoleAsync(user!, roles.roleName!);
-                return Ok(new ApiResponse { Message = "تم تغيير الصلاحية بنجاح" });
+                return Ok(new ApiResponse { Message = result.Error });
             }
-            
+            return Ok(new ApiResponse { Message = result.Error });
         }
 
-        //جلب المعلومات
         [Authorize(Roles = "Admin")]
         [HttpPost("Get-Information")]
         public async Task<IActionResult> getInformation(GetInformationDTO getInformationDTO)
         {
             if (getInformationDTO.Email != null)
             {
-                var user = await _userManager.FindByEmailAsync(getInformationDTO.Email!);
+                var user = await _userService.FindByEmailAsync(getInformationDTO.Email!);
                 if (user != null)
                 {
                     return Ok(new { user.Email, user.fullName });
@@ -404,38 +162,26 @@ namespace firstProject.Controllers
             
         }
 
-        //الاحصائيات
         [Authorize(Roles = "Admin,Manager")]
         [HttpGet("Statictis")]
         public async Task<IActionResult> statictis()
         {
-            var allUsers = await _userManager.GetUsersInRoleAsync("User");
-            var allCompanies = await _userManager.GetUsersInRoleAsync("Company");
-            var allBrokers = await _userManager.GetUsersInRoleAsync("Broker");
-            return Ok(allUsers.Count + allCompanies.Count + allBrokers.Count);
+            var userCount = await _userService.GetUserCountByRole("User");
+            var companyCount = await _userService.GetUserCountByRole("Company");
+            var brokerCount = await _userService.GetUserCountByRole("Broker");
+            return Ok(userCount + companyCount + brokerCount);
             
         }
 
-        // جلب جميع المستخدمين للصلاحيات
         [Authorize(Roles = "Admin")]
         [HttpGet("Get-All-Peaple-Admin/{Page}")]
         public async Task<IActionResult> GetAllPeapleAdmin(int Page)
         {
-            
-            var allUsers = await _userManager.Users
-                .Skip((Page - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
+            var allUsers = await _userService.GetByPaging(Page, pageSize, "") ?? new List<UserDTO>();
 
-            var users = new List<UserDTO>();
-
-            // Process users and get their roles
-            foreach (var user in allUsers)
+            var users = allUsers.Select(u =>
             {
-                var roles = await _userManager.GetRolesAsync(user);
-                var role = string.Join(", ", roles);
-
-                string arabicRole = role switch
+                string arabicRole = (u.Role ?? "") switch
                 {
                     "Admin" => "مسؤول",
                     "Manager" => "مدير",
@@ -444,22 +190,14 @@ namespace firstProject.Controllers
                     "CustomerService" => "خدمة العملاء",
                     "Broker" => "مخلص",
                     "Account" => "محاسب",
-                    _ => role
+                    _ => u.Role ?? ""
                 };
 
-                users.Add(new UserDTO
-                {
-                    Id = user.Id,
-                    fullName = user.fullName,
-                    Identity = user.Identity,
-                    phoneNumber = user.PhoneNumber,
-                    Email = user.Email,
-                    Role = arabicRole,
-                    IsBlocked = user.isBlocked
-                });
-            }
+                u.Role = arabicRole;
+                return u;
+            }).ToList();
 
-            var totalUser = await _userManager.Users.CountAsync();
+            var totalUser = allUsers.Count;
             var totalPages = (int)Math.Ceiling((double)totalUser / pageSize);
 
             return Ok(new
@@ -471,7 +209,6 @@ namespace firstProject.Controllers
             });
         }
 
-        //عرض الصفحة الشخصية
         [Authorize]
         [HttpGet("Profile")]
         public async Task<IActionResult> Profile()
@@ -483,10 +220,12 @@ namespace firstProject.Controllers
                 return BadRequest(new ApiResponse { Message = "برجاء ملئ البيانات المطلوبة" });
             }
 
-            var data = await _userManager.FindByIdAsync(ID);
+            var data = await _userService.FindByIdAsync(ID);
             if (data != null)
             {
                 List<SelectDTO> list = new List<SelectDTO>();
+                var role = await _userService.GetRole(data.Email!);
+                var roles = string.Join(", ", role);
                 list.Add(new SelectDTO
                 {
                     Id = data!.Id,
@@ -497,7 +236,7 @@ namespace firstProject.Controllers
                     InsuranceNumber = data.InsuranceNumber,
                     license = data.license,
                     Identity = data.Identity,
-                    Role = _userManager.GetRolesAsync(data).Result.FirstOrDefault(),
+                    Role = roles,
                 });
 
                 return Ok(list[0]);
@@ -506,7 +245,6 @@ namespace firstProject.Controllers
             
         }
 
-        //عرض الصفحة الشخصية للمسؤول
         [Authorize(Roles = ("Admin,Manager"))]
         [HttpGet("Profile-Show-Admin/{ID}")]
         public async Task<IActionResult> profileShowAdmin(string ID)
@@ -517,8 +255,9 @@ namespace firstProject.Controllers
                 return BadRequest(new ApiResponse { Message = "برجاء ملئ البيانات المطلوبة" });
             }
 
-            var data = await _userManager.FindByIdAsync(ID.ToString()!);
-            var role = await _userManager.GetRolesAsync(data!);
+            var data = await _userService.FindByIdAsync(ID.ToString()!);
+            if (data == null)  return BadRequest(new ApiResponse { Message = "المستخدم غير موجود"});
+            var role = await _userService.GetRole(data!.Email!);
             var roles = string.Join(", ", role);
             if (data != null)
             {
@@ -541,125 +280,54 @@ namespace firstProject.Controllers
             return NotFound(new ApiResponse { Message = "بيانات المستخدم غير موجودة" });
         }
 
-        // التخصوصات للمدير
         [Authorize(Roles = "Admin")]
         [HttpPost("Set-Permissions")]
-        public async Task<IActionResult> SetPermissions(RolesDTO rolesDTO)
+        public async Task<IActionResult> SetPermissions([FromBody] RolesDTO rolesDTO)
         {
-            
-            var user = await _userManager.FindByIdAsync(rolesDTO.ID!);
-            if (user is null)
-            {
-                return BadRequest(new ApiResponse { Message = "المستخدم غير موجود" });
-            }
+            var result = await _userService.SetPermissionsAsync(rolesDTO);
 
-            var existingClaims = await _userManager.GetClaimsAsync(user);
+            if (!result.Success)
+                return BadRequest(new ApiResponse { Message = result.Message });
 
-            var distinctPermissions = rolesDTO.NameOfPermissions!.Distinct();
-            var addClaims = new List<string>();
-
-            foreach (var role in distinctPermissions)
-            {
-                if (!existingClaims.Any(c => c.Type == role && c.Value == "true"))
-                {
-                    var result = await _userManager.AddClaimAsync(user, new Claim(role, "true"));
-                    if (result.Succeeded)
-                        addClaims.Add(role);
-                }
-            }
-            return Ok(addClaims);
+            return Ok(new ApiResponse { Message = result.Message, Data = result.AddedClaims });
         }
 
-        //جلب الصلاحيات
         [Authorize(Roles = "Manager,Admin")]
-        [HttpGet("Get-Permissions/{ID}")]
+        [HttpGet("Get-Permissions-User/{ID}")]
         public async Task<IActionResult> GetPermissions(string ID)
         {
-            
-            if (!string.IsNullOrEmpty(ID!.ToString()))
-            {
-                var TokenUser = await _userManager.FindByIdAsync(ID.ToString()!);
-                var claims = await _userManager.GetClaimsAsync(TokenUser!);
-                var selectClaims = claims.Select(c => c.Type).ToArray();
-                return Ok(selectClaims);
-            }
-            return BadRequest(new ApiResponse { Message = "برجاء ملئ البيانات المطلوبة" });
-            
+            var result = await _userService.GetPermissionsAsync(ID);
+
+            if (!result.Success)
+                return BadRequest(new ApiResponse { Message = result.Message });
+
+            return Ok(new ApiResponse { Message = result.Message, Data = result.Claims });
         }
 
-        //حذف الصلاحيات
         [Authorize(Roles = "Admin")]
         [HttpPost("Delete-Permissions")]
-        public async Task<IActionResult> DeletePermissions(RolesDTO rolesDTO)
+        public async Task<IActionResult> DeletePermissions([FromBody] RolesDTO rolesDTO)
         {
-            
-            if (!string.IsNullOrEmpty(rolesDTO.ID))
-            {
-                var user = await _userManager.FindByIdAsync(rolesDTO.ID);
-                if (user is not null)
-                {
-                    var claims = await _userManager.GetClaimsAsync(user);
+            var result = await _userService.DeletePermissionsAsync(rolesDTO);
 
-                    foreach (var permission in rolesDTO.NameOfPermissions!)
-                    {
-                        var claimToRemove = claims.FirstOrDefault(c => c.Type == permission && c.Value == "true");
-                        if (claimToRemove != null)
-                        {
-                            var result = await _userManager.RemoveClaimAsync(user, claimToRemove);
-                            if (result.Succeeded)
-                            {
-                                var results = await _userManager.GetClaimsAsync(user);
-                                return Ok(results.Select(t => t.Type));
-                            }
-                        }
-                    }
-                }
-            }
-            return Ok(new string[] { });
-            
+            if (!result.Success)
+                return BadRequest(new ApiResponse { Message = result.Message });
+
+            return Ok(new ApiResponse { Message = result.Message, Data = result.RemainingClaims });
         }
-
-        [Authorize(Roles = "Manager")]
-        [HttpGet("Get-Permissions-User")]
-        public async Task<IActionResult> GetPermissionsUser()
-        {
-            
-            var ID = User.FindFirstValue("ID");
-            if (!string.IsNullOrEmpty(ID!.ToString()))
-            {
-                var TokenUser = await _userManager.FindByIdAsync(ID.ToString()!);
-                var claims = await _userManager.GetClaimsAsync(TokenUser!);
-                var selectClaims = claims.Select(c => new { c.Type }).ToList();
-                return Ok(selectClaims);
-            }
-            return BadRequest(new ApiResponse { Message = "برجاء ملئ البيانات المطلوبة" });
-            
-        }
-
+      
         [Authorize(Roles = "Admin,Manager")]
         [HttpGet("Get-Active-Users/{Page}")]
         public async Task<IActionResult> GetActiveUsers(int Page)
         {
-
-            CultureInfo culture = new CultureInfo("ar-SA")
-            {
-                DateTimeFormat = { Calendar = new GregorianCalendar() },
-                NumberFormat = { DigitSubstitution = DigitShapes.NativeNational }
-            };
-
-            // Get active users with pagination
-            var activeUsers = await _userManager.Users
-                .Where(u => u.isActive == true && u.lastLogin!.Value.AddMonths(1) >= DateTime.UtcNow)
-                .Skip((Page - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-
+            var activeUsers = await _userService.GetByPagingCondition(u => u.isActive == true && u.lastLogin.AddMonths(1) >= DateTime.UtcNow, 1, pageSize);
+            if (activeUsers == null)
+                return Ok(new string[] { });
             var users = new List<ActiveUsersDTO>();
 
-            // Process users and get their data
             foreach (var user in activeUsers)
             {
-                var response = await new SendApis(httpClient1, _httpContextAccessor).SendAPI(user.Id);
+                var response = await _serviceManager.FunctionService.SendAPI(user.Id.ToString());
 
                 if (response.HasValue &&
                     response.Value.TryGetProperty("totalOrders", out JsonElement totalOrders) &&
@@ -669,18 +337,14 @@ namespace firstProject.Controllers
                     {
                         fullName = user.fullName,
                         Email = user.Email,
-                        lastlogin = user.lastLogin!.Value.ToString("dddd, dd MMMM yyyy", culture),
+                        lastlogin = GetFormattedDate(user.lastLogin).ToString(),
                         totalOrders = totalOrders.GetInt32(),
                         SuccessOrders = successOrders.GetInt32(),
                     });
                 }
             }
 
-            // Get total count efficiently
-            var totalCount = await _userManager.Users
-                .Where(u => u.isActive == true && u.lastLogin!.Value.AddMonths(1) >= DateTime.UtcNow)
-                .CountAsync();
-
+            var totalCount =  activeUsers.Count;
             var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
 
             return Ok(new
@@ -692,31 +356,20 @@ namespace firstProject.Controllers
             });
         }
 
-
         [Authorize(Roles = "Admin,Manager")]
         [HttpGet("Get-Not-Active-Users/{Page}")]
         public async Task<IActionResult> GetNotActiveUsers(int Page)
         {
 
-            CultureInfo culture = new CultureInfo("ar-SA")
-            {
-                DateTimeFormat = { Calendar = new GregorianCalendar() },
-                NumberFormat = { DigitSubstitution = DigitShapes.NativeNational }
-            };
-
-            // Get not active users with pagination
-            var notActiveUsers = await _userManager.Users
-                .Where(u => u.isActive == true && u.lastLogin!.Value.AddMonths(1) <= DateTime.UtcNow)
-                .Skip((Page - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
+            var notActiveUsers = await _userService.GetByPagingCondition(u => u.isActive == true && u.lastLogin.AddMonths(1) <= DateTime.UtcNow, 1, pageSize);
+            if (notActiveUsers == null)
+                return Ok(new string[] { });
 
             var users = new List<ActiveUsersDTO>();
 
-            // Process users and get their data
             foreach (var user in notActiveUsers)
             {
-                var response = await new SendApis(httpClient1, _httpContextAccessor).SendAPI(user.Id);
+                var response = await _serviceManager.FunctionService.SendAPI(user.Id.ToString());
 
                 if (response.HasValue &&
                     response.Value.TryGetProperty("totalOrders", out JsonElement totalOrders) &&
@@ -726,17 +379,14 @@ namespace firstProject.Controllers
                     {
                         fullName = user.fullName,
                         Email = user.Email,
-                        lastlogin = user.lastLogin!.Value.ToString("dddd, dd MMMM yyyy", culture),
+                        lastlogin = GetFormattedDate(user.lastLogin).ToString(),
                         totalOrders = totalOrders.GetInt32(),
                         SuccessOrders = successOrders.GetInt32()
                     });
                 }
             }
 
-            // Get total count efficiently
-            var totalCount = await _userManager.Users
-                .Where(u => u.isActive == true && u.lastLogin!.Value.AddMonths(1) <= DateTime.UtcNow)
-                .CountAsync();
+            var totalCount =  notActiveUsers.Count;
 
 
             var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
@@ -749,6 +399,34 @@ namespace firstProject.Controllers
                 data = users
             });
         }
+
+
+
+        private IActionResult CreatePaginatedResponse<T>(IEnumerable<T> data, int page, int pageSize)
+        {
+            var totalCount = data.Count();
+            var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+            return Ok(new
+            {
+                TotalPages = totalPages,
+                Page = page,
+                Data = data,
+                TotalUser = totalCount
+            });
+        }
+        private IActionResult GetFormattedDate(DateTime dateTime)
+        {
+            CultureInfo culture = new CultureInfo("ar-SA")
+            {
+                DateTimeFormat = { Calendar = new GregorianCalendar() },
+                NumberFormat = { DigitSubstitution = DigitShapes.NativeNational }
+            };
+
+            string today = dateTime.ToString("dddd, dd MMMM yyyy", culture);
+            return new JsonResult(new { date = today });
+        }
+
 
     }
 }

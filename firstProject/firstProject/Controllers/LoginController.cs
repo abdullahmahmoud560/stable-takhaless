@@ -1,9 +1,8 @@
-﻿using firstProject.ApplicationDbContext;
-using firstProject.DTO;
-using firstProject.Model;
-using Microsoft.AspNetCore.Identity;
+﻿using Application.Interface;
+using Infrastructure.Services;
+using Infrastructure.Validation;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+using static Shared.DataTransferObject;
 
 namespace firstProject.Controllers
 {
@@ -11,183 +10,128 @@ namespace firstProject.Controllers
     [ApiController]
     public class LoginController : ControllerBase
     {
-        private readonly UserManager<User> _userManager;
-        private readonly SignInManager<User> _signInManager;
-        private readonly EmailService _emailService;
-        private readonly DB _db;
-        private readonly IHttpContextAccessor _httpContextAccessor;
-        private readonly HttpClient _httpClient;
-        public LoginController(UserManager<User> userManager, SignInManager<User> signInManager,EmailService emailService,DB db , IHttpContextAccessor httpContext, HttpClient httpClient)
+        private readonly IServiceManager _serviceManager;
+        private readonly IUserService _userService;
+        public LoginController(IServiceManager serviceManager,IUserService userService)
         {
-            _userManager = userManager;
-            _signInManager = signInManager;
-            _emailService = emailService;
-            _db = db;
-            _httpContextAccessor = httpContext;
-            _httpClient = httpClient;
+           _serviceManager = serviceManager;
+            _userService = userService;
         }
 
-        //تسجيل دخول المستخدم
         [HttpPost("Login")]
-        public async Task<IActionResult> LoginUser([FromBody] LoginDTO loginDTO)
+        public async Task<IActionResult> Login([FromBody] LoginDTO loginDTO)
         {
-           
             if (loginDTO == null || string.IsNullOrEmpty(loginDTO.Email) || string.IsNullOrEmpty(loginDTO.Password))
             {
                 return BadRequest(new ApiResponse { Message = "يجب إدخال البريد الإلكتروني وكلمة المرور" });
             }
 
-            
-                var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Email == loginDTO.Email);
-                if( user == null)
-                {
-                    return Unauthorized(new ApiResponse { Message = "البريد الإلكتروني او كلمة المرور غير صحيحة" });
-                }
-                if (await _userManager.IsLockedOutAsync(user) || user.isBlocked == true || user.isActive == false)
-                {
-                    return Unauthorized(new ApiResponse { Message = "الحساب محظور" });
-                }
+            loginDTO.Email = InputSanitizer.SanitizeEmail(loginDTO.Email);
 
-                var signInResult = await _signInManager.CheckPasswordSignInAsync(user, loginDTO.Password!, lockoutOnFailure: true);
+            var result = await _userService.LoginUser(loginDTO);
+            if(!result.Success)
+                return Ok(new ApiResponse { Message = result.Error });
 
-                if (!signInResult.Succeeded)
-                {
-                    return Unauthorized(new ApiResponse { Message = "البريد الإلكتروني او كلمة المرور غير صحيحة" });
-                }
+            var verifyCode = await _serviceManager.FunctionService.GenerateVerifyCode(loginDTO.Email, "VerifyLogin")!;
+            if (!verifyCode.All(c => char.IsDigit(c)))
+                return BadRequest(new ApiResponse{ Message = verifyCode });
 
-
-                var verifyCode = await new Functions(_userManager, _db, _httpContextAccessor, _httpClient).GenerateVerifyCode(user, "VerifyLogin")!;
-                
-                var Body = string.Format(@"
+            var Body = string.Format(@"
 <!DOCTYPE html>
 <html lang=""ar"">
 <head>
-    <meta charset=""UTF-8"">
-    <meta name=""viewport"" content=""width=device-width, initial-scale=1.0"">
-    <title>تأكيد تسجيل الدخول - Takles Tech</title>
+<meta charset=""UTF-8"">
+<meta name=""viewport"" content=""width=device-width, initial-scale=1.0"">
+<title>تأكيد تسجيل الدخول - Takles Tech</title>
 </head>
 <body style=""font-family: Arial, sans-serif; color: #333; text-align: center; padding: 20px;"">
-    <div style=""max-width: 600px; margin: auto; border: 1px solid #ddd; border-radius: 10px; padding: 20px; background-color: #f9f9f9;"">
-        <h2 style=""color: #28a745;"">تأكيد تسجيل الدخول</h2>
-        <p style=""font-size: 16px;"">مرحبًا،</p>
-        <p style=""font-size: 16px;"">لقد تم طلب تسجيل الدخول إلى حسابك في <strong>Takles Tech</strong>.</p>
-        <p style=""font-size: 16px;"">لإكمال تسجيل الدخول، يرجى إدخال رمز التحقق التالي:</p>
-        <p style=""display: inline-block; padding: 12px 25px; background-color: #28a745; color: white; text-decoration: none; font-size: 22px; border-radius: 5px; font-weight: bold; margin-top: 10px;"">
-        {0}
-        </p>
-        <p style=""font-size: 16px; margin-top:20px;"">يرجى إدخال هذا الكود في صفحة التحقق الخاصة بموقعنا.</p>
-        <p style=""font-size: 14px; color: #777; margin-top: 20px;"">إذا لم تحاول تسجيل الدخول، يمكنك تجاهل هذه الرسالة أو التواصل معنا لتأمين حسابك.</p>
-        <hr style=""margin:30px 0;""/>
-        <p style=""font-size: 14px; color: #777;"">
-            مع تحيات<br/>
-            فريق <strong>Takles Tech</strong><br/>
-            <a href=""https://taklestech.com"" target=""_blank"">taklestech.com</a><br/>
-            للدعم الفني: <a href=""mailto:support@taklestech.com"">support@taklestech.com</a>
-        </p>
-    </div>
+<div style=""max-width: 600px; margin: auto; border: 1px solid #ddd; border-radius: 10px; padding: 20px; background-color: #f9f9f9;"">
+    <h2 style=""color: #28a745;"">تأكيد تسجيل الدخول</h2>
+    <p style=""font-size: 16px;"">مرحبًا،</p>
+    <p style=""font-size: 16px;"">لقد تم طلب تسجيل الدخول إلى حسابك في <strong>Takles Tech</strong>.</p>
+    <p style=""font-size: 16px;"">لإكمال تسجيل الدخول، يرجى إدخال رمز التحقق التالي (صالح لمدة 5 دقائق فقط):</p>
+    <p style=""display: inline-block; padding: 12px 25px; background-color: #28a745; color: white; text-decoration: none; font-size: 22px; border-radius: 5px; font-weight: bold; margin-top: 10px;"">
+    {0}
+    </p>
+    <p style=""font-size: 16px; margin-top:20px;"">يرجى إدخال هذا الكود في صفحة التحقق الخاصة بموقعنا.</p>
+    <p style=""font-size: 14px; color: #777; margin-top: 20px;"">إذا لم تحاول تسجيل الدخول، يمكنك تجاهل هذه الرسالة أو التواصل معنا لتأمين حسابك.</p>
+    <hr style=""margin:30px 0;""/>
+    <p style=""font-size: 14px; color: #777;"">
+        مع تحيات<br/>
+        فريق <strong>Takles Tech</strong><br/>
+        <a href=""https://taklestech.com"" target=""_blank"">taklestech.com</a><br/>
+        للدعم الفني: <a href=""mailto:support@taklestech.com"">support@taklestech.com</a>
+    </p>
+</div>
 </body>
 </html>", verifyCode);
-                var result = await _emailService.SendEmailAsync(user.Email!, "تأكيد تسجيل الدخول", Body);
-                Console.WriteLine($"📧 Email sending result: {result}");
-                var roles = await _userManager.GetRolesAsync(user);
-                var rolesString = string.Join(", ", roles);
-                user.lastLogin = DateTime.UtcNow;
-                await _userManager.UpdateAsync(user);
 
-                var tokenService = new Token_verfy(_userManager);
-                var generatedToken = await tokenService.GenerateToken(user);
-                Response.Cookies.Append("token", generatedToken, new CookieOptions
-                {
-                    HttpOnly = true,
-                    Secure = true,
-                    SameSite = SameSiteMode.None,
-                    Expires = DateTime.UtcNow.AddMinutes(30),
-                    Domain = ".takhleesak.com",
-                });
+            var send = await _serviceManager.EmailService.SendEmailAsync(loginDTO.Email!, "تأكيد تسجيل الدخول", Body);
+            if (!send.Success)
+                return BadRequest(new ApiResponse { Message = send.Error });
 
-                return Ok(new ApiResponse
-                {
-                    Message = "تم تسجيل الدخول بنجاح",
-                    Data = rolesString,
-                    State = "VerifyLogin"
-                });
-        }
+            var generatedToken = await _serviceManager.TokenService.GenerateAccessToken(loginDTO.Email);
+            if (!generatedToken.Success)
+                return BadRequest(new ApiResponse { Message = "خطأ اثناء توليد الكود" });
+
+            CookieHelper.SetTokenCookie(Response, generatedToken.Error, 30);
+
+            return Ok(new ApiResponse{Message = "تم تسجيل الدخول بنجاح",Data = result.Error,State = "VerifyLogin"});}
+
         [HttpPost("Login-Mobile")]
         public async Task<IActionResult> LoginMobile([FromBody] LoginDTO loginDTO)
         {
-           
-            if (loginDTO == null || string.IsNullOrEmpty(loginDTO.Email) || string.IsNullOrEmpty(loginDTO.Password))
-            {
+
+            if (string.IsNullOrEmpty(loginDTO.Email) || string.IsNullOrEmpty(loginDTO.Password))
                 return BadRequest(new ApiResponse { Message = "يجب إدخال البريد الإلكتروني وكلمة المرور" });
-            }
 
-            
-                var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Email == loginDTO.Email);
-                if( user == null)
-                {
-                    return Unauthorized(new ApiResponse { Message = "البريد الإلكتروني او كلمة المرور غير صحيحة" });
-                }
-                if (await _userManager.IsLockedOutAsync(user) || user.isBlocked == true || user.isActive == false)
-                {
-                    return Unauthorized(new ApiResponse { Message = "الحساب محظور" });
-                }
+            var result = await _userService.LoginUser(loginDTO);
+            if (!result.Success)
+                return Ok(new ApiResponse { Message = result.Error });
 
-                var signInResult = await _signInManager.CheckPasswordSignInAsync(user, loginDTO.Password!, lockoutOnFailure: true);
+            var verifyCode = await _serviceManager.FunctionService.GenerateVerifyCode(loginDTO.Email, "VerifyLogin")!;
+            if (!verifyCode.All(c => char.IsDigit(c)))
+                return BadRequest(new ApiResponse{ Message = verifyCode });
 
-                if (!signInResult.Succeeded)
-                {
-                    return Unauthorized(new ApiResponse { Message = "البريد الإلكتروني او كلمة المرور غير صحيحة" });
-                }
-
-
-                var verifyCode = await new Functions(_userManager, _db, _httpContextAccessor, _httpClient).GenerateVerifyCode(user, "VerifyLogin")!;
-                
-                var Body = string.Format(@"
+            var Body = string.Format(@"
 <!DOCTYPE html>
 <html lang=""ar"">
 <head>
-    <meta charset=""UTF-8"">
-    <meta name=""viewport"" content=""width=device-width, initial-scale=1.0"">
-    <title>تأكيد تسجيل الدخول - Takles Tech</title>
+<meta charset=""UTF-8"">
+<meta name=""viewport"" content=""width=device-width, initial-scale=1.0"">
+<title>تأكيد تسجيل الدخول - Takles Tech</title>
 </head>
 <body style=""font-family: Arial, sans-serif; color: #333; text-align: center; padding: 20px;"">
-    <div style=""max-width: 600px; margin: auto; border: 1px solid #ddd; border-radius: 10px; padding: 20px; background-color: #f9f9f9;"">
-        <h2 style=""color: #28a745;"">تأكيد تسجيل الدخول</h2>
-        <p style=""font-size: 16px;"">مرحبًا،</p>
-        <p style=""font-size: 16px;"">لقد تم طلب تسجيل الدخول إلى حسابك في <strong>Takles Tech</strong>.</p>
-        <p style=""font-size: 16px;"">لإكمال تسجيل الدخول، يرجى إدخال رمز التحقق التالي:</p>
-        <p style=""display: inline-block; padding: 12px 25px; background-color: #28a745; color: white; text-decoration: none; font-size: 22px; border-radius: 5px; font-weight: bold; margin-top: 10px;"">
-        {0}
-        </p>
-        <p style=""font-size: 16px; margin-top:20px;"">يرجى إدخال هذا الكود في صفحة التحقق الخاصة بموقعنا.</p>
-        <p style=""font-size: 14px; color: #777; margin-top: 20px;"">إذا لم تحاول تسجيل الدخول، يمكنك تجاهل هذه الرسالة أو التواصل معنا لتأمين حسابك.</p>
-        <hr style=""margin:30px 0;""/>
-        <p style=""font-size: 14px; color: #777;"">
-            مع تحيات<br/>
-            فريق <strong>Takles Tech</strong><br/>
-            <a href=""https://taklestech.com"" target=""_blank"">taklestech.com</a><br/>
-            للدعم الفني: <a href=""mailto:support@taklestech.com"">support@taklestech.com</a>
-        </p>
-    </div>
+<div style=""max-width: 600px; margin: auto; border: 1px solid #ddd; border-radius: 10px; padding: 20px; background-color: #f9f9f9;"">
+    <h2 style=""color: #28a745;"">تأكيد تسجيل الدخول</h2>
+    <p style=""font-size: 16px;"">مرحبًا،</p>
+    <p style=""font-size: 16px;"">لقد تم طلب تسجيل الدخول إلى حسابك في <strong>Takles Tech</strong>.</p>
+    <p style=""font-size: 16px;"">لإكمال تسجيل الدخول، يرجى إدخال رمز التحقق التالي:</p>
+    <p style=""display: inline-block; padding: 12px 25px; background-color: #28a745; color: white; text-decoration: none; font-size: 22px; border-radius: 5px; font-weight: bold; margin-top: 10px;"">
+    {0}
+    </p>
+    <p style=""font-size: 16px; margin-top:20px;"">يرجى إدخال هذا الكود في صفحة التحقق الخاصة بموقعنا.</p>
+    <p style=""font-size: 14px; color: #777; margin-top: 20px;"">إذا لم تحاول تسجيل الدخول، يمكنك تجاهل هذه الرسالة أو التواصل معنا لتأمين حسابك.</p>
+    <hr style=""margin:30px 0;""/>
+    <p style=""font-size: 14px; color: #777;"">
+        مع تحيات<br/>
+        فريق <strong>Takles Tech</strong><br/>
+        <a href=""https://taklestech.com"" target=""_blank"">taklestech.com</a><br/>
+        للدعم الفني: <a href=""mailto:support@taklestech.com"">support@taklestech.com</a>
+    </p>
+</div>
 </body>
 </html>", verifyCode);
-                var result = await _emailService.SendEmailAsync(user.Email!, "تأكيد تسجيل الدخول", Body);
-                Console.WriteLine($"📧 Email sending result: {result}");
-                var roles = await _userManager.GetRolesAsync(user);
-                var rolesString = string.Join(", ", roles);
-                user.lastLogin = DateTime.UtcNow;
-                await _userManager.UpdateAsync(user);
 
-                var tokenService = new Token_verfy(_userManager);
-                var generatedToken = await tokenService.GenerateToken(user);
-                
-                return Ok(new ApiResponse
-                {
-                    Message = generatedToken,
-                    Data = rolesString,
-                    State = "VerifyLogin"
-                   
-                });
+            var send = await _serviceManager.EmailService.SendEmailAsync(loginDTO.Email!, "تأكيد تسجيل الدخول", Body);
+            if (!send.Success)
+                return BadRequest(new ApiResponse { Message = send.Error });
+
+            var generatedToken = await _serviceManager.TokenService.GenerateActiveToken(loginDTO.Email);
+            if (!generatedToken.Success)
+                return BadRequest(new ApiResponse { Message = generatedToken.Error });
+
+            return Ok(new ApiResponse{Message = generatedToken.Error,Data = result.Error,State = "VerifyLogin"});
         }
     }
 }

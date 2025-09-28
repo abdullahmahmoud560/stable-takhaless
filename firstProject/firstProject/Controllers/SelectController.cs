@@ -1,8 +1,7 @@
-﻿using firstProject.DTO;
-using firstProject.Model;
+﻿using Application.Interface;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using static Shared.DataTransferObject;
 
 namespace firstProject.Controllers
 {
@@ -10,14 +9,12 @@ namespace firstProject.Controllers
     [ApiController]
     public class SelectController : ControllerBase
     {
-        private readonly UserManager<User> _userManager;
-
-        public SelectController(UserManager<User> userManager)
+        private IUserService _userService;
+        public SelectController(IUserService userService)
         {
-            _userManager = userManager;
+            _userService = userService;
         }
 
-        //جلب بيانات المستخدم
         [Authorize]
         [HttpPost("Select-Data")]
         public async Task<IActionResult> selectData([FromBody] GetID getID)
@@ -25,7 +22,7 @@ namespace firstProject.Controllers
             if (getID.ID == null) {
                 return BadRequest(new ApiResponse { Message = "برجاء ملئ البيانات المطلوبة" });
             }
-            var data = await _userManager.FindByIdAsync(getID.ID!);
+            var data = await _userService.FindByIdAsync(getID.ID!);
 
             if (data == null)
             {
@@ -46,7 +43,6 @@ namespace firstProject.Controllers
             return Ok(CustomData);
         }
 
-        //جلب بيانات المستخدمين
         [Authorize]
         [HttpPost("Select-Broker-User")]
         public async Task<IActionResult> selectBrokerUser([FromBody] GetID getID)
@@ -57,8 +53,8 @@ namespace firstProject.Controllers
             }
 
 
-            var data = await _userManager.FindByIdAsync(getID.ID!);
-            var data1 = await _userManager.FindByIdAsync(getID.BrokerID!);
+            var data = await _userService.FindByIdAsync(getID.ID!);
+            var data1 = await _userService.FindByIdAsync(getID.BrokerID!);
 
 
             if (data == null && data1 == null)
